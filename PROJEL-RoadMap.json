@@ -4,20 +4,21 @@
     "purpose": "Aplicacao web didatica para apoio ao dimensionamento de circuitos eletricos conforme ABNT NBR 5410, substituindo planilhas e reforcando o raciocinio de engenharia",
     "target_audience": [
       "engenharia civil",
-      "engenharia de energia"
+      "engenharia de energia",
+      "estudantes de eletrotecnica"
     ],
     "constraints": {
-      "cost": "free",
+      "cost": "zero (forever free)",
       "license": "open-source",
-      "deployment": "free-tier only"
+      "deployment": "stateless backend (free-tier friendly)",
+      "privacy": "local-first (sem banco de dados no servidor)"
     },
     "core_principles": [
       "engenharia antes de calculo",
       "contexto antes de circuito",
       "norma como regra explicita e auditavel",
       "usuario descreve a realidade, sistema traduz para a norma",
-      "rastreabilidade total das decisoes",
-      "excelencia de UX sem simplificacao tecnica"
+      "rastreabilidade total das decisoes"
     ]
   },
 
@@ -26,57 +27,60 @@
       "framework": "React",
       "language": "TypeScript",
       "bundler": "Vite",
-      "ui_library": "Material UI"
+      "ui_library": "Material UI",
+      "state_management": "Context API + LocalStorage"
     },
     "backend": {
       "framework": "FastAPI",
       "language": "Python",
-      "python_version": ">=3.11"
+      "python_version": ">=3.11",
+      "architecture": "Stateless (Calculation Engine)"
     },
     "database": {
-      "type": "SQLite",
+      "type": "None (Server-side) / LocalStorage (Client-side)",
       "usage": [
-        "persistencia didatica",
-        "projetos exemplo",
-        "historico de dimensionamentos"
+        "persistencia no navegador do usuario",
+        "exportacao/importacao via JSON",
+        "total privacidade de dados"
       ]
     },
     "deployment": {
       "frontend": "Vercel",
-      "backend": "Render"
+      "backend": "Render (Web Service)"
     }
   },
 
   "roadmap": [
     {
       "phase": "00",
-      "name": "Congelamento conceitual",
-      "objective": "Eliminar ambiguidades antes de qualquer implementacao",
+      "name": "Congelamento conceitual e Arquitetural",
+      "objective": "Definir limites do sistema e estrategia de dados",
       "outputs": [
-        "escopo fechado",
-        "decisoes arquiteturais congeladas",
-        "alinhamento completo com NBR 5410"
-      ]
+        "decisao por arquitetura stateless",
+        "modelo de dados JSON portavel",
+        "alinhamento com NBR 5410"
+      ],
+      "status": "concluido"
     },
 
     {
       "phase": "01",
-      "name": "Preparacao do ambiente de desenvolvimento",
-      "objective": "Criar ambiente previsivel, reprodutivel e estavel",
+      "name": "Preparacao do ambiente",
+      "objective": "Criar ambiente reprodutivel",
       "steps": [
-        "Instalar VSCode",
-        "Instalar Python >= 3.11",
-        "Instalar Node.js (LTS)",
-        "Configurar extensoes (Python, Pylance, Black, ESLint, Prettier, GitLens)",
-        "Instalar Git e criar conta GitHub"
+        "Python 3.11+",
+        "Node.js (LTS)",
+        "Configuracao de VENV",
+        "Instalacao de dependencias (FastAPI, Pydantic, Uvicorn)"
       ],
-      "deliverable": "Ambiente local pronto para desenvolvimento continuo"
+      "deliverable": "Ambiente local configurado",
+      "status": "concluido"
     },
 
     {
       "phase": "02",
-      "name": "Inicializacao e organizacao do projeto",
-      "objective": "Evitar caos estrutural desde o inicio",
+      "name": "Organizacao do Monorepo",
+      "objective": "Estrutura de codigo limpa e separada por responsabilidade",
       "details": {
         "repository": {
           "type": "monorepo",
@@ -87,239 +91,154 @@
             "/docs"
           ]
         },
-        "documentation": {
-          "README": [
-            "objetivo do sistema",
-            "escopo normativo",
-            "limitacoes assumidas",
-            "stack tecnologica"
-          ],
-          "license": "MIT"
+        "git_strategy": {
+          "gitignore": "unificado (python + node)",
+          "branching": "main based"
         }
       },
-      "deliverable": "Repositorio versionado e documentado"
+      "deliverable": "Repositorio Git inicializado com estrutura de pastas",
+      "status": "concluido"
     },
 
     {
       "phase": "03",
-      "name": "Configuracao do backend",
-      "objective": "Criar API orquestradora sem logica de engenharia embutida",
+      "name": "Configuracao do Backend Stateless",
+      "objective": "Criar API de processamento puro (sem persistencia)",
       "principles": [
-        "API nao calcula",
-        "API nao decide",
-        "API apenas valida e chama o dominio"
+        "API nao salva estado",
+        "API recebe Projeto -> Devolve Resultado",
+        "Validacao forte na entrada (Pydantic)"
       ],
       "initial_endpoints": [
         "/health",
         "/version",
-        "/projetos",
-        "/zonas",
-        "/circuitos",
-        "/dimensionamento",
-        "/demanda"
+        "/v1/calcular/dimensionamento",
+        "/v1/calcular/demanda"
       ],
-      "deliverable": "Backend funcional, testavel e extensivel"
+      "deliverable": "API rodando com Swagger/OpenAPI",
+      "status": "concluido"
     },
 
     {
       "phase": "04",
-      "name": "Configuracao do frontend",
-      "objective": "Criar base de UX limpa e orientada a projeto",
+      "name": "Configuracao do Frontend",
+      "objective": "Criar base de UX e gerenciador de estado local",
       "principles": [
         "linguagem humana",
-        "progressivo",
-        "sem jargoes normativos na entrada"
+        "feedback imediato",
+        "persistencia automatica no navegador"
       ],
       "core_views": [
-        "Projeto",
-        "Zonas de Influencia",
-        "Circuitos",
-        "Resultados"
+        "Dashboard de Projetos (Local)",
+        "Editor de Zonas",
+        "Editor de Circuitos",
+        "Relatorio de Calculo"
       ],
-      "deliverable": "Frontend integrado ao backend"
+      "deliverable": "Frontend React inicializado conectando ao Backend"
     },
 
     {
       "phase": "05",
-      "name": "Modelagem do dominio eletrico",
-      "objective": "Traduzir a NBR 5410 para estruturas computacionais",
+      "name": "Modelagem do dominio eletrico (Core)",
+      "objective": "Traduzir NBR 5410 para classes Python ricas",
       "schemas": {
         "ProjetoEletrico": {
           "id": "uuid",
           "nome": "string",
-          "tipo_instalacao": "residencial | comercial | industrial",
-          "tensao_sistema": "string",
           "sistema": "monofasico | bifasico | trifasico",
-          "esquema_aterramento": "TT | TN-S | TN-C | TN-C-S | IT",
-          "descricao_aterramento": "string"
+          "esquema_aterramento": "TT | TN-S..."
         },
-
         "ZonaDeInfluencia": {
           "id": "uuid",
           "nome": "string",
-          "tipo_zona": "residencial | comercial | industrial | tecnica | externa | personalizada",
-          "descricao": "string",
           "influencias_externas": {
-            "descricao_local": "string",
-            "influencias": [
-              {
-                "categoria": "A | B | C",
-                "codigo": "string",
-                "classe": "number",
-                "descricao": "string"
-              }
-            ]
+            "descricao_local": "string (ex: Parede umida)",
+            "influencias": ["InfluenciaNormativa"]
           }
         },
-
         "Circuito": {
           "id": "uuid",
-          "identificador": "string",
-          "tipo_circuito": "iluminacao | TUG | TUE",
           "zona_id": "uuid",
-          "sobrescreve_influencias": "boolean",
-          "tensao_nominal": "number",
-          "comprimento_m": "number",
-          "metodo_instalacao": "A1 | A2 | B1 | B2 | C | D | E | F",
-          "material_condutor": "cobre | aluminio",
-          "isolacao": "PVC | EPR | XLPE",
-          "temperatura_ambiente": "number",
-          "circuitos_agrupados": "number",
-          "potencia_instalada_W": "number | null",
-          "corrente_nominal_A": "number | null",
-          "criticidade": "normal | importante | essencial"
+          "metodo_instalacao": "string",
+          "potencia_instalada_W": "number (mutuamente exclusivo com corrente)",
+          "corrente_nominal_A": "number"
         }
       },
       "rules": [
-        "influencias externas sao definidas por zona",
-        "circuitos herdam influencias da zona por padrao",
-        "excecoes sao explicitas e raras",
-        "potencia e corrente sao mutuamente exclusivas"
+        "Validacao de Potencia vs Corrente",
+        "Heranca de influencias da zona"
       ],
-      "deliverable": "Dominio fechado e coerente"
-    },
-
-    {
-      "phase": "05.1",
-      "name": "UX – Definicao de Zonas e Influencias",
-      "objective": "Excelencia de UX para entrada de contexto normativo",
-      "ux_flow": [
-        "sugestao automatica de zonas",
-        "wizard progressivo por zona",
-        "perguntas humanas",
-        "traducao automatica para codigos normativos",
-        "resumo tecnico oculto por padrao"
-      ],
-      "deliverable": "Entrada confiavel de influencias externas"
+      "deliverable": "Modulo domain_core auditado e testado",
+      "status": "concluido"
     },
 
     {
       "phase": "06",
       "name": "Motor de calculo normativo",
-      "objective": "Executar calculos conforme pratica de engenharia",
+      "objective": "Implementar a inteligencia de engenharia",
       "calculations": [
-        "corrente de projeto",
-        "capacidade de conducao",
-        "fatores de correcao",
-        "queda de tensao",
-        "selecao de disjuntor"
+        "Ib: Corrente de projeto",
+        "Iz: Capacidade de conducao corrigida (FCT * FCA)",
+        "Queda de tensao (V%)",
+        "Selecao de Disjuntor (Ib <= In <= Iz)"
       ],
       "output_schema": {
         "ResultadoDimensionamento": {
           "corrente_projeto": "number",
-          "secao_condutor": "number",
+          "criterio_condutor": "capacidade | queda_tensao | curto",
+          "secao_condutor_mm2": "number",
           "dispositivo_protecao": "string",
-          "queda_tensao_percentual": "number",
-          "alertas": "string[]",
-          "referencias_normativas": "string[]"
+          "memoria_calculo": "string[]"
         }
       },
-      "deliverable": "Resultados tecnicamente defensaveis"
-    },
-
-    {
-      "phase": "06.5",
-      "name": "Regras condicionais por influencias externas",
-      "objective": "Avaliar aceitabilidade normativa das solucoes",
-      "checks": [
-        "exigencia de DR",
-        "restricao de metodo de instalacao",
-        "necessidade de equipotencializacao",
-        "reprovacao normativa"
-      ],
-      "deliverable": "Analise contextual integrada ao calculo"
+      "deliverable": "Endpoint de calculo retornando resultados corretos"
     },
 
     {
       "phase": "07",
-      "name": "Modulo de demanda por concessionaria",
-      "objective": "Calcular demanda de forma independente",
-      "schema": {
-        "ModeloDemanda": {
-          "concessionaria": "string",
-          "tipo_instalacao": "string",
-          "fator_expansao_futuro": "number",
-          "demanda_calculada": "number",
-          "criterio": "string",
-          "justificativa": "string"
-        }
-      },
-      "initial_provider": "CEMIG",
-      "deliverable": "Demanda extensivel por concessionaria"
+      "name": "Modulo de demanda",
+      "objective": "Calculo independente por concessionaria",
+      "initial_provider": "CEMIG (ND-5.1)",
+      "deliverable": "Calculadora de demanda anexada ao projeto"
     },
 
     {
       "phase": "08",
-      "name": "Persistencia e reutilizacao",
-      "objective": "Permitir uso real em sala e avaliacao",
+      "name": "Persistencia Local e Portabilidade",
+      "objective": "Gerenciar dados sem servidor",
       "features": [
-        "salvar projetos",
-        "duplicar projetos",
-        "editar zonas e circuitos",
-        "carregar exemplos reais"
+        "LocalStorage: Salvar trabalho em andamento",
+        "Exportar JSON: Baixar projeto para backup/compartilhamento",
+        "Importar JSON: Carregar projeto de colega/professor"
       ],
-      "deliverable": "Base reutilizavel de projetos"
+      "deliverable": "Sistema de Arquivos Virtual no Frontend"
     },
 
     {
       "phase": "09",
-      "name": "Testes tecnicos",
-      "objective": "Garantir que o sistema nao ensine errado",
+      "name": "Testes e Validacao",
+      "objective": "Garantia de qualidade didatica",
       "tests": [
-        "unitarios de formulas",
-        "unitarios de regras normativas",
-        "casos reais de projeto",
-        "casos limite"
+        "Unitarios: Formulas da NBR",
+        "Integracao: Frontend -> Backend -> Frontend",
+        "End-to-End: Fluxo completo de um projeto residencial"
       ],
-      "deliverable": "Confiabilidade tecnica comprovada"
+      "deliverable": "Suite de testes verde"
     },
 
     {
       "phase": "10",
-      "name": "Documentacao tecnica",
-      "objective": "Registrar o conhecimento embutido no sistema",
-      "docs": [
-        "modelo matematico",
-        "fluxo de decisao",
-        "mapeamento UX → norma",
-        "limitacoes assumidas"
-      ],
-      "deliverable": "Sistema defensavel tecnicamente e pedagogicamente"
-    },
-
-    {
-      "phase": "11",
-      "name": "Deploy",
-      "objective": "Disponibilizar o sistema para uso academico",
-      "constraints": [
-        "free tier",
-        "sem autenticacao obrigatoria"
-      ],
-      "deploy": {
-        "frontend": "Vercel",
-        "backend": "Render"
+      "name": "Deploy e Documentacao",
+      "objective": "Lancar versao publica",
+      "deploy_strategy": {
+        "Backend": "Render Free Tier (desliga apos inatividade, sem perda de dados pois eh stateless)",
+        "Frontend": "Vercel (Global CDN)"
       },
-      "deliverable": "Aplicacao online e acessivel"
+      "docs": [
+        "Manual do Usuario",
+        "Nota Tecnica sobre as simplificacoes assumidas"
+      ],
+      "deliverable": "URL publica acessivel"
     }
   ]
 }
