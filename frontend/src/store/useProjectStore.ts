@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { Projeto } from '../types/project';
+import type { Projeto } from '../types/project';
 
 interface ProjectState {
   projects: Projeto[];
@@ -32,7 +32,7 @@ export const useProjectStore = create<ProjectState>()(
         set({ activeProjectId: id }),
     }),
     {
-      name: 'projel-storage', // Nome da chave no LocalStorage
+      name: 'projel-storage',
       storage: createJSONStorage(() => localStorage),
     }
   )

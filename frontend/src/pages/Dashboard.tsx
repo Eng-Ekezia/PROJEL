@@ -1,12 +1,11 @@
 import React from 'react';
 import { 
   Container, Typography, Button, Card, 
-  CardContent, CardActions, Box 
+  CardContent, CardActions, Box, Grid
 } from '@mui/material';
-import Grid from '@mui/material/Grid2'; // Importando a versão estável v2
 import AddIcon from '@mui/icons-material/Add';
 import { useProjectStore } from '../store/useProjectStore';
-import { Projeto } from '../types/project';
+import type { Projeto } from '../types/project';
 
 const Dashboard: React.FC = () => {
   const { projects, addProject, deleteProject } = useProjectStore();
@@ -38,10 +37,9 @@ const Dashboard: React.FC = () => {
         </Button>
       </Box>
 
-      {/* Grid v2 do MUI não usa mais a prop 'item' */}
       <Grid container spacing={3}>
         {projects.map((project) => (
-          <Grid size={{ xs: 12, sm: 6, md: 4 }} key={project.id}>
+          <Grid key={project.id} size={{ xs: 12, sm: 6, md: 4 }}>
             <Card elevation={3}>
               <CardContent>
                 <Typography variant="h6" noWrap>{project.nome}</Typography>
