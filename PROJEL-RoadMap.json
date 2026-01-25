@@ -25,10 +25,10 @@
   "technology_stack": {
     "frontend": {
       "framework": "React",
-      "language": "TypeScript",
-      "bundler": "Vite",
-      "ui_library": "Material UI",
-      "state_management": "Context API + LocalStorage"
+      "language": "TypeScript (Strict Mode / VerbatimModuleSyntax)",
+      "bundler": "Vite (Composite Mode)",
+      "ui_library": "Material UI (MUI) v6",
+      "state_management": "Zustand + Persist Middleware (LocalStorage)"
     },
     "backend": {
       "framework": "FastAPI",
@@ -39,7 +39,7 @@
     "database": {
       "type": "None (Server-side) / LocalStorage (Client-side)",
       "usage": [
-        "persistencia no navegador do usuario",
+        "persistencia no navegador do usuario via Zustand",
         "exportacao/importacao via JSON",
         "total privacidade de dados"
       ]
@@ -62,7 +62,6 @@
       ],
       "status": "concluido"
     },
-
     {
       "phase": "01",
       "name": "Preparacao do ambiente",
@@ -76,7 +75,6 @@
       "deliverable": "Ambiente local configurado",
       "status": "concluido"
     },
-
     {
       "phase": "02",
       "name": "Organizacao do Monorepo",
@@ -99,7 +97,6 @@
       "deliverable": "Repositorio Git inicializado com estrutura de pastas",
       "status": "concluido"
     },
-
     {
       "phase": "03",
       "name": "Configuracao do Backend Stateless",
@@ -118,41 +115,40 @@
       "deliverable": "API rodando com Swagger/OpenAPI",
       "status": "concluido"
     },
-
     {
       "phase": "04",
-      "name": "Configuracao do Frontend",
-      "objective": "Criar base de UX e gerenciador de estado local",
+      "name": "Configuracao do Frontend & Estado Global",
+      "objective": "Criar base de UX e gerenciador de estado persistente",
       "principles": [
-        "linguagem humana",
-        "feedback imediato",
-        "persistencia automatica no navegador"
+        "Linguagem humana",
+        "Feedback imediato",
+        "Persistencia automatica no navegador"
       ],
-      "core_views": [
-        "Dashboard de Projetos (Local)",
-        "Editor de Zonas",
-        "Editor de Circuitos",
-        "Relatorio de Calculo"
+      "milestones": [
+        "Integracao do Zustand para gerenciamento de estado global",
+        "Configuracao rigorosa do TypeScript (Composite Mode / noEmit)",
+        "Resolucao de conflitos de importacao de tipos (VerbatimModuleSyntax)",
+        "Dashboard de Projetos funcional com CRUD basico"
       ],
-      "deliverable": "Frontend React inicializado conectando ao Backend"
+      "deliverable": "Frontend React inicializado com Store Zustand persistente",
+      "status": "concluido"
     },
-
     {
       "phase": "05",
       "name": "Modelagem do dominio eletrico (Core)",
-      "objective": "Traduzir NBR 5410 para classes Python ricas",
+      "objective": "Traduzir NBR 5410 para classes Python ricas e interfaces TS",
       "schemas": {
         "ProjetoEletrico": {
           "id": "uuid",
           "nome": "string",
           "sistema": "monofasico | bifasico | trifasico",
-          "esquema_aterramento": "TT | TN-S..."
+          "esquema_aterramento": "TT | TN-S"
         },
         "ZonaDeInfluencia": {
           "id": "uuid",
           "nome": "string",
           "influencias_externas": {
-            "descricao_local": "string (ex: Parede umida)",
+            "descricao_local": "string",
             "influencias": ["InfluenciaNormativa"]
           }
         },
@@ -160,18 +156,17 @@
           "id": "uuid",
           "zona_id": "uuid",
           "metodo_instalacao": "string",
-          "potencia_instalada_W": "number (mutuamente exclusivo com corrente)",
+          "potencia_instalada_W": "number",
           "corrente_nominal_A": "number"
         }
       },
       "rules": [
-        "Validacao de Potencia vs Corrente",
-        "Heranca de influencias da zona"
+        "Validacao de Potencia vs Corrente (Mutuamente Exclusivos)",
+        "Heranca de influencias da zona para os circuitos"
       ],
-      "deliverable": "Modulo domain_core auditado e testado",
-      "status": "concluido"
+      "deliverable": "Modulo domain_core auditado e Interfaces TS sincronizadas",
+      "status": "em_execucao"
     },
-
     {
       "phase": "06",
       "name": "Motor de calculo normativo",
@@ -185,35 +180,34 @@
       "output_schema": {
         "ResultadoDimensionamento": {
           "corrente_projeto": "number",
-          "criterio_condutor": "capacidade | queda_tensao | curto",
           "secao_condutor_mm2": "number",
           "dispositivo_protecao": "string",
           "memoria_calculo": "string[]"
         }
       },
-      "deliverable": "Endpoint de calculo retornando resultados corretos"
+      "deliverable": "Endpoint de calculo retornando resultados corretos",
+      "status": "pendente"
     },
-
     {
       "phase": "07",
       "name": "Modulo de demanda",
       "objective": "Calculo independente por concessionaria",
       "initial_provider": "CEMIG (ND-5.1)",
-      "deliverable": "Calculadora de demanda anexada ao projeto"
+      "deliverable": "Calculadora de demanda anexada ao projeto",
+      "status": "pendente"
     },
-
     {
       "phase": "08",
       "name": "Persistencia Local e Portabilidade",
       "objective": "Gerenciar dados sem servidor",
       "features": [
-        "LocalStorage: Salvar trabalho em andamento",
+        "Zustand Persist: Salvar trabalho em andamento automaticamente",
         "Exportar JSON: Baixar projeto para backup/compartilhamento",
         "Importar JSON: Carregar projeto de colega/professor"
       ],
-      "deliverable": "Sistema de Arquivos Virtual no Frontend"
+      "deliverable": "Sistema de Arquivos Virtual no Frontend",
+      "status": "parcialmente_concluido"
     },
-
     {
       "phase": "09",
       "name": "Testes e Validacao",
@@ -223,22 +217,23 @@
         "Integracao: Frontend -> Backend -> Frontend",
         "End-to-End: Fluxo completo de um projeto residencial"
       ],
-      "deliverable": "Suite de testes verde"
+      "deliverable": "Suite de testes verde",
+      "status": "pendente"
     },
-
     {
       "phase": "10",
       "name": "Deploy e Documentacao",
       "objective": "Lancar versao publica",
       "deploy_strategy": {
-        "Backend": "Render Free Tier (desliga apos inatividade, sem perda de dados pois eh stateless)",
+        "Backend": "Render Free Tier (Stateless)",
         "Frontend": "Vercel (Global CDN)"
       },
       "docs": [
         "Manual do Usuario",
         "Nota Tecnica sobre as simplificacoes assumidas"
       ],
-      "deliverable": "URL publica acessivel"
+      "deliverable": "URL publica acessivel",
+      "status": "pendente"
     }
   ]
 }
