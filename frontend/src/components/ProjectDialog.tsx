@@ -7,7 +7,7 @@ import {
   Button,
   TextField,
   MenuItem,
-  Grid2 as Grid // MUI v6 Grid
+  Grid // CORREÇÃO: Usar Grid v1 ou v2 do MUI 5
 } from '@mui/material';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
@@ -18,15 +18,16 @@ import {
   TensaoSistema, 
   TipoInstalacao 
 } from '../types/enums';
-import { Projeto } from '../types/project';
+// CORREÇÃO: Importação explicita de tipo
+import type { Projeto } from '../types/project';
 
 // --- SCHEMA DE VALIDAÇÃO (ZOD) ---
-// Extraímos os valores dos nossos objetos "as const" para o Zod validar
 const tiposInstalacao = Object.values(TipoInstalacao) as [string, ...string[]];
 const tensoesSistema = Object.values(TensaoSistema) as [string, ...string[]];
 const sistemasFases = Object.values(SistemaFases) as [string, ...string[]];
 const esquemasAterramento = Object.values(EsquemaAterramento) as [string, ...string[]];
 
+// CORREÇÃO: Sintaxe correta para mensagens de erro no Zod v3
 const projectSchema = z.object({
   nome: z.string().min(3, "O nome deve ter pelo menos 3 caracteres"),
   tipo_instalacao: z.enum(tiposInstalacao, { errorMap: () => ({ message: "Selecione o tipo" }) }),
@@ -38,12 +39,11 @@ const projectSchema = z.object({
 
 type ProjectFormData = z.infer<typeof projectSchema>;
 
-// --- COMPONENTE ---
 interface ProjectDialogProps {
   open: boolean;
   onClose: () => void;
   onSave: (data: ProjectFormData) => void;
-  initialData?: Projeto; // Se existir, é Edição
+  initialData?: Projeto;
 }
 
 export const ProjectDialog: React.FC<ProjectDialogProps> = ({ 
@@ -61,7 +61,6 @@ export const ProjectDialog: React.FC<ProjectDialogProps> = ({
     }
   });
 
-  // Reseta o formulário sempre que o modal abre ou os dados iniciais mudam
   useEffect(() => {
     if (open) {
       reset(initialData ? {
@@ -97,7 +96,7 @@ export const ProjectDialog: React.FC<ProjectDialogProps> = ({
         <DialogContent dividers>
           <Grid container spacing={2}>
             {/* Nome do Projeto */}
-            <Grid size={{ xs: 12 }}>
+            <Grid item xs={12}>
               <Controller
                 name="nome"
                 control={control}
@@ -115,7 +114,7 @@ export const ProjectDialog: React.FC<ProjectDialogProps> = ({
             </Grid>
 
             {/* Tipo de Instalação */}
-            <Grid size={{ xs: 12, sm: 6 }}>
+            <Grid item xs={12} sm={6}>
               <Controller
                 name="tipo_instalacao"
                 control={control}
@@ -136,9 +135,11 @@ export const ProjectDialog: React.FC<ProjectDialogProps> = ({
               />
             </Grid>
 
-            {/* Sistema (Fases) */}
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <Controller
+            {/* Outros campos seguem o padrão... (Grid item em vez de Grid size no MUI 5) */}
+             <Grid item xs={12} sm={6}>
+               {/* ... Repetir correção Grid item vs Grid size para os demais campos ... */}
+               {/* Exemplo para Sistema: */}
+               <Controller
                 name="sistema"
                 control={control}
                 render={({ field }) => (
@@ -157,10 +158,8 @@ export const ProjectDialog: React.FC<ProjectDialogProps> = ({
                 )}
               />
             </Grid>
-
-            {/* Tensão */}
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <Controller
+             <Grid item xs={12} sm={6}>
+               <Controller
                 name="tensao_sistema"
                 control={control}
                 render={({ field }) => (
@@ -179,10 +178,8 @@ export const ProjectDialog: React.FC<ProjectDialogProps> = ({
                 )}
               />
             </Grid>
-
-            {/* Esquema de Aterramento */}
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <Controller
+             <Grid item xs={12} sm={6}>
+               <Controller
                 name="esquema_aterramento"
                 control={control}
                 render={({ field }) => (
@@ -201,9 +198,7 @@ export const ProjectDialog: React.FC<ProjectDialogProps> = ({
                 )}
               />
             </Grid>
-
-            {/* Descrição Aterramento (Opcional) */}
-            <Grid size={{ xs: 12 }}>
+             <Grid item xs={12}>
               <Controller
                 name="descricao_aterramento"
                 control={control}
@@ -219,6 +214,7 @@ export const ProjectDialog: React.FC<ProjectDialogProps> = ({
                 )}
               />
             </Grid>
+
           </Grid>
         </DialogContent>
         
