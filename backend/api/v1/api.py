@@ -1,6 +1,11 @@
 from fastapi import APIRouter
-from backend.api.v1.endpoints import system
+from backend.api.v1.endpoints import system, zonas, locais 
 
 api_router = APIRouter()
-api_router.include_router(system.router, tags=["system"])
-# Futuramente: api_router.include_router(calculo.router, prefix="/calculo", tags=["calculo"])
+
+# Rotas de Sistema
+api_router.include_router(system.router, prefix="/system", tags=["system"])
+
+# Rotas de Domínio (Phase 06)
+api_router.include_router(zonas.router, prefix="/zonas", tags=["zonas - influências"])
+api_router.include_router(locais.router, prefix="/locais", tags=["locais - arquitetura"])

@@ -1,3 +1,6 @@
+import os
+
+local_schema_content = r'''
 from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
@@ -23,3 +26,22 @@ class Local(LocalBase):
 
     class Config:
         from_attributes = True
+'''
+
+def main():
+    base_dir = os.getcwd()
+    target_path = os.path.join(base_dir, "domain_core/schemas/local.py")
+    
+    # Verifica se a pasta existe (segurança)
+    if not os.path.exists(os.path.dirname(target_path)):
+        print(f"ERRO: Pasta {os.path.dirname(target_path)} não encontrada.")
+        return
+
+    with open(target_path, "w", encoding="utf-8") as f:
+        f.write(local_schema_content.strip())
+    
+    print("✅ domain_core/schemas/local.py corrigido com sucesso!")
+    print("👉 REINICIE O BACKEND AGORA: (Ctrl+C -> uvicorn main:app --reload)")
+
+if __name__ == "__main__":
+    main()

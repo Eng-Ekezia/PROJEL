@@ -1,56 +1,53 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
-import type { Projeto } from '../types/project'; // ADICIONADO 'type'
+import { persist } from 'zustand/middleware';
+import type { Projeto, Zona, Local } from '../types/project';
 
 interface ProjectState {
   projects: Projeto[];
-  activeProjectId: string | null;
-  
   addProject: (project: Projeto) => void;
-  updateProject: (id: string, updatedData: Partial<Projeto>) => void;
+  updateProject: (id: string, data: Partial<Projeto>) => void;
   deleteProject: (id: string) => void;
-  setActiveProject: (id: string | null) => void;
-  getActiveProject: () => Projeto | undefined;
+  
+  // Actions da Fase 06
+  addZonaToProject: (projetoId: string, zona: Zona) => void;
+  addLocalToProject: (projetoId: string, local: Local) => void;
 }
 
 export const useProjectStore = create<ProjectState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       projects: [],
-      activeProjectId: null,
+      
+      addProject: (project) => set((state) => ({ 
+        projects: [...state.projects, { ...project, zonas: [], locais: [] }] 
+      })),
 
-      addProject: (project) => 
-        set((state) => ({ 
-          projects: [...state.projects, project],
-          activeProjectId: project.id
-        })),
+      updateProject: (id, data) => set((state) => ({
+        projects: state.projects.map((p) => (p.id === id ? { ...p, ...data, ultima_modificacao: new Date().toISOString() } : p)),
+      })),
 
-      updateProject: (id, updatedData) =>
-        set((state) => ({
-          projects: state.projects.map((p) => 
-            p.id === id 
-              ? { ...p, ...updatedData, ultima_modificacao: new Date().toISOString() } 
-              : p
-          )
-        })),
+      deleteProject: (id) => set((state) => ({
+        projects: state.projects.filter((p) => p.id !== id),
+      })),
 
-      deleteProject: (id) => 
-        set((state) => ({ 
-          projects: state.projects.filter((p) => p.id !== id),
-          activeProjectId: state.activeProjectId === id ? null : state.activeProjectId
-        })),
+      addZonaToProject: (projetoId, zona) => set((state) => ({
+        projects: state.projects.map(p => {
+          if (p.id !== projetoId) return p;
+          const zonasAtuais = p.zonas || [];
+          return { ...p, zonas: [...zonasAtuais, zona], ultima_modificacao: new Date().toISOString() };
+        })
+      })),
 
-      setActiveProject: (id) => 
-        set({ activeProjectId: id }),
-
-      getActiveProject: () => {
-        const state = get();
-        return state.projects.find((p) => p.id === state.activeProjectId);
-      }
+      addLocalToProject: (projetoId, local) => set((state) => ({
+        projects: state.projects.map(p => {
+          if (p.id !== projetoId) return p;
+          const locaisAtuais = p.locais || [];
+          return { ...p, locais: [...locaisAtuais, local], ultima_modificacao: new Date().toISOString() };
+        })
+      })),
     }),
     {
       name: 'projel-storage',
-      storage: createJSONStorage(() => localStorage),
     }
   )
 );
