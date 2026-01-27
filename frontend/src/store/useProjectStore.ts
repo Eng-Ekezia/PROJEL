@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Projeto, Zona, Local } from '../types/project';
+import type { Projeto, Zona, Local, Carga } from '../types/project';
 
 interface ProjectState {
   projects: Projeto[];
@@ -8,9 +8,12 @@ interface ProjectState {
   updateProject: (id: string, data: Partial<Projeto>) => void;
   deleteProject: (id: string) => void;
   
-  // Actions da Fase 06
   addZonaToProject: (projetoId: string, zona: Zona) => void;
   addLocalToProject: (projetoId: string, local: Local) => void;
+  
+  // NOVAS AÇÕES (OBRIGATÓRIAS)
+  addCargaToProject: (projetoId: string, carga: Carga) => void;
+  removeCargaFromProject: (projetoId: string, cargaId: string) => void;
 }
 
 export const useProjectStore = create<ProjectState>()(
@@ -19,7 +22,7 @@ export const useProjectStore = create<ProjectState>()(
       projects: [],
       
       addProject: (project) => set((state) => ({ 
-        projects: [...state.projects, { ...project, zonas: [], locais: [] }] 
+        projects: [...state.projects, { ...project, zonas: [], locais: [], cargas: [] }] 
       })),
 
       updateProject: (id, data) => set((state) => ({
@@ -43,6 +46,25 @@ export const useProjectStore = create<ProjectState>()(
           if (p.id !== projetoId) return p;
           const locaisAtuais = p.locais || [];
           return { ...p, locais: [...locaisAtuais, local], ultima_modificacao: new Date().toISOString() };
+        })
+      })),
+
+      addCargaToProject: (projetoId, carga) => set((state) => ({
+        projects: state.projects.map(p => {
+          if (p.id !== projetoId) return p;
+          const cargasAtuais = p.cargas || [];
+          return { ...p, cargas: [...cargasAtuais, carga], ultima_modificacao: new Date().toISOString() };
+        })
+      })),
+
+      removeCargaFromProject: (projetoId, cargaId) => set((state) => ({
+        projects: state.projects.map(p => {
+          if (p.id !== projetoId) return p;
+          return { 
+            ...p, 
+            cargas: (p.cargas || []).filter(c => c.id !== cargaId), 
+            ultima_modificacao: new Date().toISOString() 
+          };
         })
       })),
     }),

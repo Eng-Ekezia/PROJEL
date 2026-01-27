@@ -17,7 +17,7 @@ import { useProjectStore } from '../store/useProjectStore';
 import { ProjectDialog } from '../components/ProjectDialog';
 import type { Projeto } from '../types/project';
 
-type ProjectFormData = Omit<Projeto, 'id' | 'data_criacao' | 'ultima_modificacao' | 'zonas' | 'locais'>;
+type ProjectFormData = Omit<Projeto, 'id' | 'data_criacao' | 'ultima_modificacao' | 'zonas' | 'locais' | 'cargas'>;
 
 const Dashboard: React.FC = () => {
   const { projects, addProject, updateProject, deleteProject } = useProjectStore();
@@ -54,6 +54,7 @@ const Dashboard: React.FC = () => {
         ultima_modificacao: new Date().toISOString(),
         zonas: [], // Inicializa listas vazias
         locais: [],
+        cargas: [],
         ...data
       };
       addProject(newProject);

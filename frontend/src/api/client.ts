@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Zona, Local } from '../types/project';
+import type { Zona, Local, Carga } from '../types/project';
 
 const api = axios.create({
   baseURL: 'http://localhost:8000/api/v1',
@@ -27,6 +27,22 @@ export const ProjectService = {
 
   createLocal: async (local: Omit<Local, 'id' | 'data_criacao'>): Promise<Local> => {
     const response = await api.post<Local>('/locais/', local);
+    return response.data;
+  },
+
+  // --- NOVOS MÉTODOS DE CARGA ---
+  
+  createCarga: async (carga: Omit<Carga, 'id' | 'data_criacao'>): Promise<Carga> => {
+    const response = await api.post<Carga>('/cargas/', carga);
+    return response.data;
+  },
+
+  calcularNorma: async (area: number, perimetro: number, eh_cozinha_servico: boolean) => {
+    const response = await api.post('/cargas/calcular-minimo-nbr', {
+        area,
+        perimetro,
+        eh_cozinha_servico
+    });
     return response.data;
   }
 };
