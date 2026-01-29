@@ -1,44 +1,36 @@
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, Literal
 from datetime import datetime
 import uuid
 
-# Importando os Enums corretos de influencias.py
+# Importando os Enums
 from ..enums.influencias import (
     TemperaturaAmbiente, 
     PresencaAgua, 
     PresencaSolidos, 
     CompetenciaPessoas,
-    MateriaisConstrucao,   # Classificação CA
-    EstruturaEdificacao    # Classificação CB
+    MateriaisConstrucao,
+    EstruturaEdificacao
 )
 
 class ZonaBase(BaseModel):
     nome: str = Field(..., description="Nome descritivo da zona (ex: Área Molhada, Oficina)")
     descricao: Optional[str] = None
     
+    # Metadados de UX/Rastreabilidade
+    origem: Literal['preset', 'ajustada', 'custom'] = Field(default='custom', description="Origem da definição da zona")
+    preset_id: Optional[str] = Field(default=None, description="ID do preset utilizado, se houver")
+
     # --- Influências Ambientais (Defaults Seguros - NBR 5410) ---
-    
-    # AA - Temperatura
     temp_ambiente: TemperaturaAmbiente = Field(default=TemperaturaAmbiente.AA4)
-    
-    # AD - Água
     presenca_agua: PresencaAgua = Field(default=PresencaAgua.AD1)
-    
-    # AE - Sólidos/Poeira
     presenca_solidos: PresencaSolidos = Field(default=PresencaSolidos.AE1)
-    
-    # BA - Pessoas
     competencia_pessoas: CompetenciaPessoas = Field(default=CompetenciaPessoas.BA1)
-    
-    # CA - Materiais de Construção (Corrigido)
     materiais_construcao: MateriaisConstrucao = Field(default=MateriaisConstrucao.CA2)
-    
-    # CB - Estrutura da Edificação (Adicionado para completar)
     estrutura_edificacao: EstruturaEdificacao = Field(default=EstruturaEdificacao.CB1)
     
     # --- UI Helper ---
-    cor_identificacao: str = Field(default="#E0E0E0", description="Cor para representar a zona na planta/dashboard")
+    cor_identificacao: str = Field(default="#E0E0E0")
 
 class ZonaCreate(ZonaBase):
     projeto_id: str
@@ -47,7 +39,7 @@ class ZonaUpdate(BaseModel):
     nome: Optional[str] = None
     presenca_agua: Optional[PresencaAgua] = None
     competencia_pessoas: Optional[CompetenciaPessoas] = None
-    # Adicione outros campos opcionais conforme necessidade de atualização parcial
+    origem: Optional[str] = None
 
 class Zona(ZonaBase):
     id: str

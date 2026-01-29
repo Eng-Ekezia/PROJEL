@@ -1,21 +1,25 @@
+import os
+
+# ==============================================================================
+# SCRIPT DE CORREÇÃO: TRATAMENTO DE DADOS LEGADOS (NO CRASH)
+# ==============================================================================
+
+file_content = r'''
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Container, Typography, Box, Tabs, Tab, Button, 
   Grid, Card, CardContent, TextField, MenuItem, Alert, Chip, Divider, 
-  Paper, IconButton, Tooltip
+  Paper
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import SettingsIcon from '@mui/icons-material/Settings';
 import ScienceIcon from '@mui/icons-material/Science';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
 
 import { useProjectStore } from '../store/useProjectStore';
-import { ProjectService } from '../api/client';
-import type { OpcoesInfluencias } from '../api/client';
-import type { Zona, Local, PresetZona } from '../types/project';
+import { ProjectService, OpcoesInfluencias } from '../api/client';
+import { Zona, Local, PresetZona } from '../types/project';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -34,13 +38,8 @@ function CustomTabPanel(props: TabPanelProps) {
 
 // --- SUB-COMPONENTS ---
 
-interface ZoneCardProps {
-    zona: Zona;
-    onEdit: (zona: Zona) => void;
-    onDelete: (zonaId: string) => void;
-}
-
-const ZoneCard: React.FC<ZoneCardProps> = ({ zona, onEdit, onDelete }) => {
+const ZoneCard: React.FC<{ zona: Zona }> = ({ zona }) => {
+    // FIX: Garante que zonas antigas (sem o campo origem) não quebrem a tela
     const origemSafe = zona.origem || 'custom'; 
     const corSafe = zona.cor_identificacao || '#ccc';
 
@@ -48,22 +47,12 @@ const ZoneCard: React.FC<ZoneCardProps> = ({ zona, onEdit, onDelete }) => {
         <Card variant="outlined" sx={{ mb: 2, borderLeft: `6px solid ${corSafe}` }}>
             <CardContent sx={{ pb: 1 }}>
                 <Box display="flex" justifyContent="space-between" alignItems="center">
-                    <Box display="flex" alignItems="center" gap={1}>
-                        <Typography variant="h6">{zona.nome}</Typography>
-                        <Chip 
-                            label={origemSafe.toUpperCase()} 
-                            size="small" 
-                            color={origemSafe === 'preset' ? 'primary' : 'default'} 
-                        />
-                    </Box>
-                    <Box>
-                        <Tooltip title="Editar">
-                            <IconButton size="small" onClick={() => onEdit(zona)}><EditIcon fontSize="small" /></IconButton>
-                        </Tooltip>
-                        <Tooltip title="Excluir">
-                            <IconButton size="small" color="error" onClick={() => onDelete(zona.id)}><DeleteIcon fontSize="small" /></IconButton>
-                        </Tooltip>
-                    </Box>
+                    <Typography variant="h6">{zona.nome}</Typography>
+                    <Chip 
+                        label={origemSafe.toUpperCase()} 
+                        size="small" 
+                        color={origemSafe === 'preset' ? 'primary' : 'default'} 
+                    />
                 </Box>
                 <Typography variant="body2" color="text.secondary" gutterBottom>
                     {zona.descricao || 'Sem descrição'}
@@ -93,30 +82,19 @@ const ZoneCard: React.FC<ZoneCardProps> = ({ zona, onEdit, onDelete }) => {
 const ProjectDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  
-  const { 
-      projects, 
-      addZonaToProject, updateZonaInProject, removeZonaFromProject, 
-      addLocalToProject, updateLocalInProject, removeLocalFromProject 
-  } = useProjectStore();
+  const { projects, addZonaToProject, addLocalToProject } = useProjectStore();
   
   const project = projects.find(p => p.id === id);
   const [tabValue, setTabValue] = useState(0);
   const [opcoes, setOpcoes] = useState<OpcoesInfluencias | null>(null);
   
-  // --- STATES DE INTERFACE ---
+  // --- STATES DE CRIAÇÃO ---
   const [viewState, setViewState] = useState<'list' | 'method_select' | 'preset_select' | 'form_custom'>('list');
   const [availablePresets, setAvailablePresets] = useState<PresetZona[]>([]);
   const [selectedPreset, setSelectedPreset] = useState<PresetZona | null>(null);
   
-  // States de Formulário ZONA
-  const [editingZonaId, setEditingZonaId] = useState<string | null>(null);
   const [newZona, setNewZona] = useState<Partial<Zona>>({});
-  
-  // States de Formulário LOCAL
-  const [editingLocalId, setEditingLocalId] = useState<string | null>(null);
   const [newLocal, setNewLocal] = useState<Partial<Local>>({});
-  
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
@@ -127,33 +105,16 @@ const ProjectDetails: React.FC = () => {
 
   if (!project) return <Container sx={{mt:4}}><Typography>Projeto não encontrado.</Typography></Container>;
 
-  // --- ACTIONS: NAVEGAÇÃO E PRESETS ---
+  // --- ACTIONS ---
 
   const handleStartCreateZona = () => {
-    setEditingZonaId(null);
-    setNewZona({});
-    setErrorMsg(null);
-
     if (project.tipo_instalacao.toLowerCase() === 'industrial') {
         setViewState('form_custom');
-        setNewZona({ origem: 'custom', cor_identificacao: '#E0E0E0' });
     } else {
         setViewState('method_select');
     }
-  };
-
-  const handleStartEditZona = (zona: Zona) => {
-      setEditingZonaId(zona.id);
-      setNewZona({ ...zona });
-      setSelectedPreset(null);
-      setViewState('form_custom');
-      setErrorMsg(null);
-  };
-
-  const handleDeleteZona = (zonaId: string) => {
-      if (window.confirm("Tem certeza que deseja excluir esta zona?")) {
-          removeZonaFromProject(project.id, zonaId);
-      }
+    setNewZona({});
+    setErrorMsg(null);
   };
 
   const handleSelectPreset = (preset: PresetZona) => {
@@ -179,14 +140,13 @@ const ProjectDetails: React.FC = () => {
     setViewState('form_custom');
   };
 
-  // --- ACTION: SALVAR ZONA (CREATE OU UPDATE) ---
-
   const handleSaveZona = async () => {
     try {
       if (!newZona.nome) { setErrorMsg("Nome é obrigatório."); return; }
       
       let finalOrigem = newZona.origem || 'custom';
       
+      // Validação de ajuste de preset
       if (selectedPreset && finalOrigem === 'preset') {
           if (newZona.presenca_agua !== selectedPreset.influencias.presenca_agua || 
               newZona.competencia_pessoas !== selectedPreset.influencias.competencia_pessoas) {
@@ -209,70 +169,29 @@ const ProjectDetails: React.FC = () => {
           cor_identificacao: newZona.cor_identificacao || '#ccc'
       };
 
-      if (editingZonaId) {
-          const zonaAtualizada = await ProjectService.updateZona(editingZonaId, payload as any);
-          updateZonaInProject(project.id, editingZonaId, zonaAtualizada);
-      } else {
-          const zonaCriada = await ProjectService.createZona(payload as any);
-          addZonaToProject(project.id, zonaCriada);
-      }
-      
+      const zonaCriada = await ProjectService.createZona(payload as any);
+      addZonaToProject(project.id, zonaCriada);
       setViewState('list');
-      setEditingZonaId(null);
     } catch (error: any) {
         console.error(error);
         setErrorMsg("Erro ao salvar zona.");
     }
   };
 
-  // --- ACTIONS: LOCAIS (CREATE, UPDATE, DELETE) ---
-
-  const handleStartEditLocal = (local: Local) => {
-      setEditingLocalId(local.id);
-      setNewLocal({ ...local });
-      setErrorMsg(null);
-  };
-
-  const handleDeleteLocal = (localId: string) => {
-      if (window.confirm("Tem certeza que deseja excluir este cômodo?")) {
-          removeLocalFromProject(project.id, localId);
-      }
-  };
-
-  const handleSaveLocal = async () => {
+  const handleAddLocal = async () => {
     try {
       if (!newLocal.nome || !newLocal.zona_id) { setErrorMsg("Preencha dados obrigatórios."); return; }
-      
-      const payload = {
+      const localCriado = await ProjectService.createLocal({
         projeto_id: project.id,
         zona_id: newLocal.zona_id,
         nome: newLocal.nome,
         area_m2: Number(newLocal.area_m2),
         perimetro_m: Number(newLocal.perimetro_m),
         pe_direito_m: 2.8
-      };
-
-      if (editingLocalId) {
-          const localAtualizado = await ProjectService.updateLocal(editingLocalId, payload as any);
-          updateLocalInProject(project.id, editingLocalId, localAtualizado);
-          setEditingLocalId(null);
-      } else {
-          const localCriado = await ProjectService.createLocal(payload as any);
-          addLocalToProject(project.id, localCriado);
-      }
-      
+      } as any);
+      addLocalToProject(project.id, localCriado);
       setNewLocal({});
-      setErrorMsg(null);
-    } catch (e: any) { 
-        const msg = e.response?.data?.detail || "Erro ao salvar local.";
-        setErrorMsg(msg); 
-    }
-  };
-
-  const handleCancelLocal = () => {
-      setEditingLocalId(null);
-      setNewLocal({});
-      setErrorMsg(null);
+    } catch (e) { setErrorMsg("Erro ao criar local."); }
   };
 
   return (
@@ -301,14 +220,7 @@ const ProjectDetails: React.FC = () => {
         {viewState === 'list' && (
             <Grid container spacing={3}>
                 <Grid item xs={12} md={8}>
-                    {project.zonas?.map(z => (
-                        <ZoneCard 
-                            key={z.id} 
-                            zona={z} 
-                            onEdit={handleStartEditZona} 
-                            onDelete={handleDeleteZona}
-                        />
-                    ))}
+                    {project.zonas?.map(z => <ZoneCard key={z.id} zona={z} />)}
                     {(!project.zonas || project.zonas.length === 0) && 
                         <Alert severity="info">Nenhuma zona definida. Comece criando os ambientes do projeto.</Alert>
                     }
@@ -397,7 +309,7 @@ const ProjectDetails: React.FC = () => {
             <Card variant="outlined" sx={{ maxWidth: 800, mx: 'auto' }}>
                 <CardContent>
                     <Typography variant="h6" gutterBottom>
-                        {editingZonaId ? 'Editar Zona' : (newZona.origem === 'preset' ? 'Revisar Zona (Baseado em Preset)' : 'Nova Zona Personalizada')}
+                        {newZona.origem === 'preset' ? 'Revisar Zona (Baseado em Preset)' : 'Nova Zona Personalizada'}
                     </Typography>
                     
                     {errorMsg && <Alert severity="error" sx={{ mb: 2 }}>{errorMsg}</Alert>}
@@ -434,11 +346,12 @@ const ProjectDetails: React.FC = () => {
                                 {opcoes?.solidos.map(op => <MenuItem key={op.codigo} value={op.codigo}>{op.descricao}</MenuItem>)}
                             </TextField>
                         </Grid>
+                        {/* Adicionar outros campos conforme necessidade */}
                     </Grid>
 
                     <Box sx={{ mt: 4, display: 'flex', gap: 2 }}>
-                        <Button variant="outlined" onClick={() => { setViewState('list'); setEditingZonaId(null); }}>Cancelar</Button>
-                        <Button variant="contained" onClick={handleSaveZona}>{editingZonaId ? 'Salvar Alterações' : 'Criar Zona'}</Button>
+                        <Button variant="outlined" onClick={() => setViewState('list')}>Cancelar</Button>
+                        <Button variant="contained" onClick={handleSaveZona}>Salvar Zona</Button>
                     </Box>
                 </CardContent>
             </Card>
@@ -452,7 +365,7 @@ const ProjectDetails: React.FC = () => {
            <Grid item xs={12} md={4}>
             <Card variant="outlined">
               <CardContent>
-                <Typography variant="h6" gutterBottom>{editingLocalId ? 'Editar Cômodo' : 'Novo Cômodo'}</Typography>
+                <Typography variant="h6" gutterBottom>Novo Cômodo</Typography>
                 {errorMsg && <Alert severity="error">{errorMsg}</Alert>}
 
                 <TextField fullWidth label="Nome (ex: Suíte)" margin="dense"
@@ -474,12 +387,7 @@ const ProjectDetails: React.FC = () => {
                   </Grid>
                 </Grid>
 
-                <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
-                    {editingLocalId && <Button variant="outlined" fullWidth onClick={handleCancelLocal}>Cancelar</Button>}
-                    <Button variant="contained" fullWidth onClick={handleSaveLocal}>
-                        {editingLocalId ? 'Salvar' : 'Criar Cômodo'}
-                    </Button>
-                </Box>
+                <Button variant="contained" fullWidth sx={{ mt: 2 }} onClick={handleAddLocal}>Criar Cômodo</Button>
               </CardContent>
             </Card>
           </Grid>
@@ -487,24 +395,15 @@ const ProjectDetails: React.FC = () => {
             <Typography variant="h6">Cômodos Cadastrados</Typography>
             {project.locais?.map(l => (
                <Card key={l.id} sx={{ mb: 1, p: 1 }}>
-                 <Box display="flex" justifyContent="space-between" alignItems="center">
-                    <Box>
-                        <Box display="flex" alignItems="center" gap={1}>
-                             <Typography fontWeight="bold">{l.nome}</Typography>
-                             <Typography variant="caption" sx={{ bgcolor: '#e3f2fd', px: 1, borderRadius: 1 }}>
-                                {project.zonas?.find(z => z.id === l.zona_id)?.nome || 'Zona removida'}
-                            </Typography>
-                        </Box>
-                        <Typography variant="body2">Área: {l.area_m2}m² | Perímetro: {l.perimetro_m}m</Typography>
-                    </Box>
-                    <Box>
-                        <IconButton size="small" onClick={() => handleStartEditLocal(l)}><EditIcon fontSize="small" /></IconButton>
-                        <IconButton size="small" color="error" onClick={() => handleDeleteLocal(l.id)}><DeleteIcon fontSize="small" /></IconButton>
-                    </Box>
+                 <Box display="flex" justifyContent="space-between">
+                    <Typography fontWeight="bold">{l.nome}</Typography>
+                    <Typography variant="caption" sx={{ bgcolor: '#e3f2fd', px: 1, borderRadius: 1 }}>
+                        {project.zonas?.find(z => z.id === l.zona_id)?.nome}
+                    </Typography>
                  </Box>
+                 <Typography variant="body2">Área: {l.area_m2}m² | Perímetro: {l.perimetro_m}m</Typography>
                </Card>
             ))}
-            {(!project.locais || project.locais.length === 0) && <Typography color="text.secondary">Nenhum cômodo cadastrado.</Typography>}
           </Grid>
         </Grid>
       </CustomTabPanel>
@@ -513,3 +412,22 @@ const ProjectDetails: React.FC = () => {
 };
 
 export default ProjectDetails;
+'''
+
+def main():
+    base_dir = os.getcwd()
+    file_path = "frontend/src/pages/ProjectDetails.tsx"
+    full_path = os.path.join(base_dir, file_path)
+
+    print(f"--- Aplicando correção em: {full_path} ---")
+    
+    try:
+        with open(full_path, "w", encoding="utf-8") as f:
+            f.write(file_content.strip())
+        print(f"✅ Arquivo corrigido com sucesso!")
+        print(f"👉 Recarregue a página no navegador. O erro deve ter desaparecido.")
+    except Exception as e:
+        print(f"❌ Erro ao escrever arquivo: {e}")
+
+if __name__ == "__main__":
+    main()

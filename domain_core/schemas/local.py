@@ -12,14 +12,14 @@ class LocalBase(BaseModel):
     
     # Vínculos
     zona_id: str = Field(..., description="ID da Zona de Influência vinculada")
-    projeto_id: str = Field(..., description="ID do Projeto pai")  # <--- O CAMPO FALTANTE ERA ESTE
+    projeto_id: str = Field(..., description="ID do Projeto pai")
 
 class LocalCreate(LocalBase):
     pass
 
 class Local(LocalBase):
-    id: str
-    data_criacao: datetime
+    id: str = Field(..., description="Identificador único do local")
+    data_criacao: datetime = Field(..., description="Data de criação do registro")
 
     class Config:
         from_attributes = True

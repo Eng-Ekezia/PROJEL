@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Zona, Local, Carga } from '../types/project';
+import type { Zona, Local, PresetZona } from '../types/project';
 
 const api = axios.create({
   baseURL: 'http://localhost:8000/api/v1',
@@ -20,8 +20,18 @@ export const ProjectService = {
     return response.data;
   },
 
+  getPresets: async (tipoProjeto: string): Promise<PresetZona[]> => {
+    const response = await api.get<PresetZona[]>(`/zonas/presets/${tipoProjeto}`);
+    return response.data;
+  },
+
   createZona: async (zona: Omit<Zona, 'id' | 'data_criacao'>): Promise<Zona> => {
     const response = await api.post<Zona>('/zonas/', zona);
+    return response.data;
+  },
+
+  updateZona: async (id: string, zona: Omit<Zona, 'id' | 'data_criacao'>): Promise<Zona> => {
+    const response = await api.put<Zona>(`/zonas/${id}`, zona);
     return response.data;
   },
 
@@ -30,19 +40,8 @@ export const ProjectService = {
     return response.data;
   },
 
-  // --- NOVOS MÉTODOS DE CARGA ---
-  
-  createCarga: async (carga: Omit<Carga, 'id' | 'data_criacao'>): Promise<Carga> => {
-    const response = await api.post<Carga>('/cargas/', carga);
-    return response.data;
-  },
-
-  calcularNorma: async (area: number, perimetro: number, eh_cozinha_servico: boolean) => {
-    const response = await api.post('/cargas/calcular-minimo-nbr', {
-        area,
-        perimetro,
-        eh_cozinha_servico
-    });
+  updateLocal: async (id: string, local: Omit<Local, 'id' | 'data_criacao'>): Promise<Local> => {
+    const response = await api.put<Local>(`/locais/${id}`, local);
     return response.data;
   }
 };

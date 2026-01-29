@@ -1,9 +1,327 @@
+import os
+
+# ==============================================================================
+# SCRIPT: IMPLEMENTAÇÃO DE EDIÇÃO E EXCLUSÃO DE ZONAS
+# ==============================================================================
+
+files_content = {
+    # --------------------------------------------------------------------------
+    # 1. BACKEND - ENDPOINT PUT (VALIDAÇÃO STATELESS)
+    # --------------------------------------------------------------------------
+    "backend/api/v1/endpoints/zonas.py": r'''
+from fastapi import APIRouter, HTTPException, status
+from typing import List, Dict, Any
+import uuid
+from datetime import datetime
+
+from domain_core.schemas.zona import Zona, ZonaCreate
+from domain_core.enums.influencias import (
+    TemperaturaAmbiente, PresencaAgua, PresencaSolidos, 
+    CompetenciaPessoas, MateriaisConstrucao, EstruturaEdificacao,
+    DESCRICOES
+)
+
+router = APIRouter()
+
+# --- PRESETS OFICIAIS ---
+PRESETS = {
+    "residencial": [
+        {
+            "id": "res_seca",
+            "nome": "Área Seca (Sala/Quarto)",
+            "descricao": "Ambientes internos sem risco de água. Caso base da norma.",
+            "influencias": {
+                "temp_ambiente": "AA4", "presenca_agua": "AD1", "presenca_solidos": "AE1",
+                "competencia_pessoas": "BA1", "materiais_construcao": "CA1", "estrutura_edificacao": "CB1"
+            },
+            "cor": "#81C784"
+        },
+        {
+            "id": "res_molhada",
+            "nome": "Área Molhada (Banheiro/Cozinha)",
+            "descricao": "Locais com presença de água. Exige cuidados com choque (DR).",
+            "influencias": {
+                "temp_ambiente": "AA4", "presenca_agua": "AD2", "presenca_solidos": "AE1",
+                "competencia_pessoas": "BA1", "materiais_construcao": "CA1", "estrutura_edificacao": "CB1"
+            },
+            "cor": "#64B5F6"
+        },
+        {
+            "id": "res_garagem",
+            "nome": "Garagem / Área de Serviço",
+            "descricao": "Umidade eventual e possibilidade de poeira.",
+            "influencias": {
+                "temp_ambiente": "AA4", "presenca_agua": "AD2", "presenca_solidos": "AE2",
+                "competencia_pessoas": "BA1", "materiais_construcao": "CA1", "estrutura_edificacao": "CB1"
+            },
+            "cor": "#FFB74D"
+        },
+        {
+            "id": "res_externa",
+            "nome": "Área Externa (Jardim/Quintal)",
+            "descricao": "Exposição ao tempo, chuva e intempéries.",
+            "influencias": {
+                "temp_ambiente": "AA4", "presenca_agua": "AD4", "presenca_solidos": "AE2",
+                "competencia_pessoas": "BA1", "materiais_construcao": "CA1", "estrutura_edificacao": "CB1"
+            },
+            "cor": "#A1887F"
+        }
+    ],
+    "comercial": [
+        {
+            "id": "com_admin",
+            "nome": "Área Administrativa",
+            "descricao": "Escritórios e salas de reunião. Ambiente controlado.",
+            "influencias": {
+                "temp_ambiente": "AA4", "presenca_agua": "AD1", "presenca_solidos": "AE1",
+                "competencia_pessoas": "BA1", "materiais_construcao": "CA1", "estrutura_edificacao": "CB1"
+            },
+            "cor": "#90CAF9"
+        },
+        {
+            "id": "com_publico",
+            "nome": "Atendimento ao Público",
+            "descricao": "Lojas e recepções. Atenção à segurança de terceiros.",
+            "influencias": {
+                "temp_ambiente": "AA4", "presenca_agua": "AD1", "presenca_solidos": "AE1",
+                "competencia_pessoas": "BA1", "materiais_construcao": "CA1", "estrutura_edificacao": "CB1"
+            },
+            "cor": "#CE93D8"
+        },
+        {
+            "id": "com_tecnica",
+            "nome": "Área Técnica Restrita",
+            "descricao": "Servidores/Máquinas. Acesso apenas por qualificados.",
+            "influencias": {
+                "temp_ambiente": "AA4", "presenca_agua": "AD1", "presenca_solidos": "AE1",
+                "competencia_pessoas": "BA5", "materiais_construcao": "CA1", "estrutura_edificacao": "CB1"
+            },
+            "cor": "#B0BEC5"
+        }
+    ],
+    "industrial": []
+}
+
+@router.get("/presets/{tipo_projeto}", response_model=List[Dict[str, Any]])
+async def listar_presets(tipo_projeto: str):
+    """
+    Retorna os presets disponíveis para o tipo de projeto.
+    """
+    tipo = tipo_projeto.lower()
+    return PRESETS.get(tipo, [])
+
+@router.post("/", response_model=Zona, status_code=status.HTTP_201_CREATED)
+async def validar_criar_zona(zona_in: ZonaCreate):
+    """
+    Factory de Zonas: Valida e cria uma nova Zona (Stateless).
+    """
+    nova_zona = Zona(
+        id=str(uuid.uuid4()),
+        data_criacao=datetime.now(),
+        **zona_in.model_dump()
+    )
+    return nova_zona
+
+@router.put("/{zona_id}", response_model=Zona)
+async def validar_atualizar_zona(zona_id: str, zona_in: ZonaCreate):
+    """
+    Validador de Edição: Recebe os dados editados, valida contra o Schema e devolve o objeto.
+    Como o backend é stateless, ele não 'salva' no banco, mas garante que a edição é válida.
+    """
+    # Aqui poderíamos checar regras complexas de transição se necessário.
+    
+    zona_atualizada = Zona(
+        id=zona_id,
+        data_criacao=datetime.now(), # Mantém ou atualiza data? UI decide. Backend apenas valida estrutura.
+        **zona_in.model_dump()
+    )
+    return zona_atualizada
+
+@router.get("/opcoes-influencias", response_model=Dict[str, List[Dict[str, str]]])
+async def listar_opcoes_influencias():
+    """
+    Retorna opções da NBR 5410 para Dropdowns.
+    """
+    def enum_to_list(enum_cls):
+        return [{"codigo": e.value, "descricao": DESCRICOES.get(e.value, e.value)} for e in enum_cls]
+
+    return {
+        "temperatura": enum_to_list(TemperaturaAmbiente),
+        "agua": enum_to_list(PresencaAgua),
+        "solidos": enum_to_list(PresencaSolidos),
+        "pessoas": enum_to_list(CompetenciaPessoas),
+        "materiais": enum_to_list(MateriaisConstrucao),
+        "estrutura": enum_to_list(EstruturaEdificacao),
+    }
+''',
+
+    # --------------------------------------------------------------------------
+    # 2. FRONTEND - API CLIENT (UPDATE)
+    # --------------------------------------------------------------------------
+    "frontend/src/api/client.ts": r'''
+import axios from 'axios';
+import { Zona, Local, PresetZona } from '../types/project';
+
+const api = axios.create({
+  baseURL: 'http://localhost:8000/api/v1',
+});
+
+export interface OpcoesInfluencias {
+  temperatura: { codigo: string; descricao: string }[];
+  agua: { codigo: string; descricao: string }[];
+  solidos: { codigo: string; descricao: string }[];
+  pessoas: { codigo: string; descricao: string }[];
+  materiais: { codigo: string; descricao: string }[];
+  estrutura: { codigo: string; descricao: string }[];
+}
+
+export const ProjectService = {
+  getOpcoesInfluencias: async (): Promise<OpcoesInfluencias> => {
+    const response = await api.get<OpcoesInfluencias>('/zonas/opcoes-influencias');
+    return response.data;
+  },
+
+  getPresets: async (tipoProjeto: string): Promise<PresetZona[]> => {
+    const response = await api.get<PresetZona[]>(`/zonas/presets/${tipoProjeto}`);
+    return response.data;
+  },
+
+  createZona: async (zona: Omit<Zona, 'id' | 'data_criacao'>): Promise<Zona> => {
+    const response = await api.post<Zona>('/zonas/', zona);
+    return response.data;
+  },
+
+  updateZona: async (id: string, zona: Omit<Zona, 'id' | 'data_criacao'>): Promise<Zona> => {
+    // Envia para o backend validar e devolver o objeto formatado
+    const response = await api.put<Zona>(`/zonas/${id}`, zona);
+    return response.data;
+  },
+
+  createLocal: async (local: Omit<Local, 'id' | 'data_criacao'>): Promise<Local> => {
+    const response = await api.post<Local>('/locais/', local);
+    return response.data;
+  }
+};
+''',
+
+    # --------------------------------------------------------------------------
+    # 3. FRONTEND - STORE (ACTIONS DE UPDATE/DELETE)
+    # --------------------------------------------------------------------------
+    "frontend/src/store/useProjectStore.ts": r'''
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+import { Projeto, Zona, Local, Carga } from '../types/project';
+
+interface ProjectState {
+  projects: Projeto[];
+  addProject: (project: Projeto) => void;
+  updateProject: (id: string, data: Partial<Projeto>) => void;
+  deleteProject: (id: string) => void;
+  
+  addZonaToProject: (projetoId: string, zona: Zona) => void;
+  updateZonaInProject: (projetoId: string, zonaId: string, zona: Zona) => void;
+  removeZonaFromProject: (projetoId: string, zonaId: string) => void;
+
+  addLocalToProject: (projetoId: string, local: Local) => void;
+  
+  addCargaToProject: (projetoId: string, carga: Carga) => void;
+  removeCargaFromProject: (projetoId: string, cargaId: string) => void;
+}
+
+export const useProjectStore = create<ProjectState>()(
+  persist(
+    (set) => ({
+      projects: [],
+      
+      addProject: (project) => set((state) => ({ 
+        projects: [...state.projects, { ...project, zonas: [], locais: [], cargas: [] }] 
+      })),
+
+      updateProject: (id, data) => set((state) => ({
+        projects: state.projects.map((p) => (p.id === id ? { ...p, ...data, ultima_modificacao: new Date().toISOString() } : p)),
+      })),
+
+      deleteProject: (id) => set((state) => ({
+        projects: state.projects.filter((p) => p.id !== id),
+      })),
+
+      // --- ZONAS ---
+      addZonaToProject: (projetoId, zona) => set((state) => ({
+        projects: state.projects.map(p => {
+          if (p.id !== projetoId) return p;
+          const zonasAtuais = p.zonas || [];
+          return { ...p, zonas: [...zonasAtuais, zona], ultima_modificacao: new Date().toISOString() };
+        })
+      })),
+
+      updateZonaInProject: (projetoId, zonaId, zonaAtualizada) => set((state) => ({
+        projects: state.projects.map(p => {
+          if (p.id !== projetoId) return p;
+          return {
+             ...p,
+             zonas: p.zonas.map(z => z.id === zonaId ? zonaAtualizada : z),
+             ultima_modificacao: new Date().toISOString()
+          };
+        })
+      })),
+
+      removeZonaFromProject: (projetoId, zonaId) => set((state) => ({
+        projects: state.projects.map(p => {
+            if (p.id !== projetoId) return p;
+            return {
+                ...p,
+                zonas: p.zonas.filter(z => z.id !== zonaId),
+                ultima_modificacao: new Date().toISOString()
+            };
+        })
+      })),
+
+      // --- LOCAIS ---
+      addLocalToProject: (projetoId, local) => set((state) => ({
+        projects: state.projects.map(p => {
+          if (p.id !== projetoId) return p;
+          const locaisAtuais = p.locais || [];
+          return { ...p, locais: [...locaisAtuais, local], ultima_modificacao: new Date().toISOString() };
+        })
+      })),
+
+      // --- CARGAS ---
+      addCargaToProject: (projetoId, carga) => set((state) => ({
+        projects: state.projects.map(p => {
+          if (p.id !== projetoId) return p;
+          const cargasAtuais = p.cargas || [];
+          return { ...p, cargas: [...cargasAtuais, carga], ultima_modificacao: new Date().toISOString() };
+        })
+      })),
+
+      removeCargaFromProject: (projetoId, cargaId) => set((state) => ({
+        projects: state.projects.map(p => {
+          if (p.id !== projetoId) return p;
+          return { 
+            ...p, 
+            cargas: (p.cargas || []).filter(c => c.id !== cargaId), 
+            ultima_modificacao: new Date().toISOString() 
+          };
+        })
+      })),
+    }),
+    {
+      name: 'projel-storage',
+    }
+  )
+);
+''',
+
+    # --------------------------------------------------------------------------
+    # 4. FRONTEND - UI (PROJECT DETAILS COM EDIT/DELETE)
+    # --------------------------------------------------------------------------
+    "frontend/src/pages/ProjectDetails.tsx": r'''
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Container, Typography, Box, Tabs, Tab, Button, 
   Grid, Card, CardContent, TextField, MenuItem, Alert, Chip, Divider, 
-  Paper, IconButton, Tooltip
+  Paper, IconButton, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
@@ -13,9 +331,8 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 
 import { useProjectStore } from '../store/useProjectStore';
-import { ProjectService } from '../api/client';
-import type { OpcoesInfluencias } from '../api/client';
-import type { Zona, Local, PresetZona } from '../types/project';
+import { ProjectService, OpcoesInfluencias } from '../api/client';
+import { Zona, Local, PresetZona } from '../types/project';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -41,11 +358,12 @@ interface ZoneCardProps {
 }
 
 const ZoneCard: React.FC<ZoneCardProps> = ({ zona, onEdit, onDelete }) => {
+    // Retrocompatibilidade para dados legados
     const origemSafe = zona.origem || 'custom'; 
     const corSafe = zona.cor_identificacao || '#ccc';
 
     return (
-        <Card variant="outlined" sx={{ mb: 2, borderLeft: `6px solid ${corSafe}` }}>
+        <Card variant="outlined" sx={{ mb: 2, borderLeft: `6px solid ${corSafe}`, position: 'relative' }}>
             <CardContent sx={{ pb: 1 }}>
                 <Box display="flex" justifyContent="space-between" alignItems="center">
                     <Box display="flex" alignItems="center" gap={1}>
@@ -96,8 +414,10 @@ const ProjectDetails: React.FC = () => {
   
   const { 
       projects, 
-      addZonaToProject, updateZonaInProject, removeZonaFromProject, 
-      addLocalToProject, updateLocalInProject, removeLocalFromProject 
+      addZonaToProject, 
+      updateZonaInProject, 
+      removeZonaFromProject, 
+      addLocalToProject 
   } = useProjectStore();
   
   const project = projects.find(p => p.id === id);
@@ -109,14 +429,10 @@ const ProjectDetails: React.FC = () => {
   const [availablePresets, setAvailablePresets] = useState<PresetZona[]>([]);
   const [selectedPreset, setSelectedPreset] = useState<PresetZona | null>(null);
   
-  // States de Formulário ZONA
+  // States de Formulário
   const [editingZonaId, setEditingZonaId] = useState<string | null>(null);
   const [newZona, setNewZona] = useState<Partial<Zona>>({});
-  
-  // States de Formulário LOCAL
-  const [editingLocalId, setEditingLocalId] = useState<string | null>(null);
   const [newLocal, setNewLocal] = useState<Partial<Local>>({});
-  
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
@@ -145,13 +461,13 @@ const ProjectDetails: React.FC = () => {
   const handleStartEditZona = (zona: Zona) => {
       setEditingZonaId(zona.id);
       setNewZona({ ...zona });
-      setSelectedPreset(null);
+      setSelectedPreset(null); // Ao editar, perde-se a referência direta de "seleção de preset" na UI, mas mantém o ID
       setViewState('form_custom');
       setErrorMsg(null);
   };
 
   const handleDeleteZona = (zonaId: string) => {
-      if (window.confirm("Tem certeza que deseja excluir esta zona?")) {
+      if (window.confirm("Tem certeza que deseja excluir esta zona? Os circuitos associados podem ficar órfãos.")) {
           removeZonaFromProject(project.id, zonaId);
       }
   };
@@ -179,7 +495,7 @@ const ProjectDetails: React.FC = () => {
     setViewState('form_custom');
   };
 
-  // --- ACTION: SALVAR ZONA (CREATE OU UPDATE) ---
+  // --- ACTION: SALVAR (CREATE OU UPDATE) ---
 
   const handleSaveZona = async () => {
     try {
@@ -187,6 +503,7 @@ const ProjectDetails: React.FC = () => {
       
       let finalOrigem = newZona.origem || 'custom';
       
+      // Validação de ajuste de preset (apenas se for novo ou se estiver editando e mudar algo)
       if (selectedPreset && finalOrigem === 'preset') {
           if (newZona.presenca_agua !== selectedPreset.influencias.presenca_agua || 
               newZona.competencia_pessoas !== selectedPreset.influencias.competencia_pessoas) {
@@ -210,9 +527,11 @@ const ProjectDetails: React.FC = () => {
       };
 
       if (editingZonaId) {
+          // UPDATE
           const zonaAtualizada = await ProjectService.updateZona(editingZonaId, payload as any);
           updateZonaInProject(project.id, editingZonaId, zonaAtualizada);
       } else {
+          // CREATE
           const zonaCriada = await ProjectService.createZona(payload as any);
           addZonaToProject(project.id, zonaCriada);
       }
@@ -225,54 +544,20 @@ const ProjectDetails: React.FC = () => {
     }
   };
 
-  // --- ACTIONS: LOCAIS (CREATE, UPDATE, DELETE) ---
-
-  const handleStartEditLocal = (local: Local) => {
-      setEditingLocalId(local.id);
-      setNewLocal({ ...local });
-      setErrorMsg(null);
-  };
-
-  const handleDeleteLocal = (localId: string) => {
-      if (window.confirm("Tem certeza que deseja excluir este cômodo?")) {
-          removeLocalFromProject(project.id, localId);
-      }
-  };
-
-  const handleSaveLocal = async () => {
+  const handleAddLocal = async () => {
     try {
       if (!newLocal.nome || !newLocal.zona_id) { setErrorMsg("Preencha dados obrigatórios."); return; }
-      
-      const payload = {
+      const localCriado = await ProjectService.createLocal({
         projeto_id: project.id,
         zona_id: newLocal.zona_id,
         nome: newLocal.nome,
         area_m2: Number(newLocal.area_m2),
         perimetro_m: Number(newLocal.perimetro_m),
         pe_direito_m: 2.8
-      };
-
-      if (editingLocalId) {
-          const localAtualizado = await ProjectService.updateLocal(editingLocalId, payload as any);
-          updateLocalInProject(project.id, editingLocalId, localAtualizado);
-          setEditingLocalId(null);
-      } else {
-          const localCriado = await ProjectService.createLocal(payload as any);
-          addLocalToProject(project.id, localCriado);
-      }
-      
+      } as any);
+      addLocalToProject(project.id, localCriado);
       setNewLocal({});
-      setErrorMsg(null);
-    } catch (e: any) { 
-        const msg = e.response?.data?.detail || "Erro ao salvar local.";
-        setErrorMsg(msg); 
-    }
-  };
-
-  const handleCancelLocal = () => {
-      setEditingLocalId(null);
-      setNewLocal({});
-      setErrorMsg(null);
+    } catch (e) { setErrorMsg("Erro ao criar local."); }
   };
 
   return (
@@ -446,13 +731,13 @@ const ProjectDetails: React.FC = () => {
 
       </CustomTabPanel>
 
-      {/* ABA 2: LOCAIS */}
+      {/* ABA 2: LOCAIS (Mantido) */}
       <CustomTabPanel value={tabValue} index={1}>
         <Grid container spacing={3}>
            <Grid item xs={12} md={4}>
             <Card variant="outlined">
               <CardContent>
-                <Typography variant="h6" gutterBottom>{editingLocalId ? 'Editar Cômodo' : 'Novo Cômodo'}</Typography>
+                <Typography variant="h6" gutterBottom>Novo Cômodo</Typography>
                 {errorMsg && <Alert severity="error">{errorMsg}</Alert>}
 
                 <TextField fullWidth label="Nome (ex: Suíte)" margin="dense"
@@ -474,12 +759,7 @@ const ProjectDetails: React.FC = () => {
                   </Grid>
                 </Grid>
 
-                <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
-                    {editingLocalId && <Button variant="outlined" fullWidth onClick={handleCancelLocal}>Cancelar</Button>}
-                    <Button variant="contained" fullWidth onClick={handleSaveLocal}>
-                        {editingLocalId ? 'Salvar' : 'Criar Cômodo'}
-                    </Button>
-                </Box>
+                <Button variant="contained" fullWidth sx={{ mt: 2 }} onClick={handleAddLocal}>Criar Cômodo</Button>
               </CardContent>
             </Card>
           </Grid>
@@ -487,24 +767,15 @@ const ProjectDetails: React.FC = () => {
             <Typography variant="h6">Cômodos Cadastrados</Typography>
             {project.locais?.map(l => (
                <Card key={l.id} sx={{ mb: 1, p: 1 }}>
-                 <Box display="flex" justifyContent="space-between" alignItems="center">
-                    <Box>
-                        <Box display="flex" alignItems="center" gap={1}>
-                             <Typography fontWeight="bold">{l.nome}</Typography>
-                             <Typography variant="caption" sx={{ bgcolor: '#e3f2fd', px: 1, borderRadius: 1 }}>
-                                {project.zonas?.find(z => z.id === l.zona_id)?.nome || 'Zona removida'}
-                            </Typography>
-                        </Box>
-                        <Typography variant="body2">Área: {l.area_m2}m² | Perímetro: {l.perimetro_m}m</Typography>
-                    </Box>
-                    <Box>
-                        <IconButton size="small" onClick={() => handleStartEditLocal(l)}><EditIcon fontSize="small" /></IconButton>
-                        <IconButton size="small" color="error" onClick={() => handleDeleteLocal(l.id)}><DeleteIcon fontSize="small" /></IconButton>
-                    </Box>
+                 <Box display="flex" justifyContent="space-between">
+                    <Typography fontWeight="bold">{l.nome}</Typography>
+                    <Typography variant="caption" sx={{ bgcolor: '#e3f2fd', px: 1, borderRadius: 1 }}>
+                        {project.zonas?.find(z => z.id === l.zona_id)?.nome}
+                    </Typography>
                  </Box>
+                 <Typography variant="body2">Área: {l.area_m2}m² | Perímetro: {l.perimetro_m}m</Typography>
                </Card>
             ))}
-            {(!project.locais || project.locais.length === 0) && <Typography color="text.secondary">Nenhum cômodo cadastrado.</Typography>}
           </Grid>
         </Grid>
       </CustomTabPanel>
@@ -513,3 +784,29 @@ const ProjectDetails: React.FC = () => {
 };
 
 export default ProjectDetails;
+'''
+}
+
+def main():
+    base_dir = os.getcwd()
+    print(f"--- Iniciando implementação de Edit/Delete em: {base_dir} ---")
+
+    for file_path, content in files_content.items():
+        full_path = os.path.join(base_dir, file_path)
+        dir_name = os.path.dirname(full_path)
+        if dir_name and not os.path.exists(dir_name):
+            os.makedirs(dir_name)
+        
+        try:
+            with open(full_path, "w", encoding="utf-8") as f:
+                f.write(content.strip())
+            print(f"✅ Atualizado: {file_path}")
+        except Exception as e:
+            print(f"❌ Erro ao atualizar {file_path}: {e}")
+
+    print("\n--- Atualização Concluída ---")
+    print("1. Reinicie o Backend (uvicorn)")
+    print("2. A UI agora permite editar e excluir zonas.")
+
+if __name__ == "__main__":
+    main()

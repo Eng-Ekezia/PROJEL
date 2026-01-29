@@ -1,3 +1,254 @@
+import os
+
+# ==============================================================================
+# SCRIPT: IMPLEMENTAÇÃO DE EDIÇÃO E EXCLUSÃO DE LOCAIS (CÔMODOS)
+# ==============================================================================
+
+files_content = {
+    # --------------------------------------------------------------------------
+    # 1. BACKEND - ENDPOINT PUT PARA LOCAIS
+    # --------------------------------------------------------------------------
+    "backend/api/v1/endpoints/locais.py": r'''
+from fastapi import APIRouter, HTTPException, status
+import uuid
+from datetime import datetime
+
+from domain_core.schemas.local import Local, LocalCreate
+
+router = APIRouter()
+
+@router.post("/", response_model=Local, status_code=status.HTTP_201_CREATED)
+async def validar_criar_local(local_in: LocalCreate):
+    """
+    Factory de Locais: Valida geometria básica.
+    """
+    validar_geometria(local_in)
+
+    novo_local = Local(
+        id=str(uuid.uuid4()),
+        data_criacao=datetime.now(),
+        **local_in.model_dump()
+    )
+    return novo_local
+
+@router.put("/{local_id}", response_model=Local)
+async def validar_atualizar_local(local_id: str, local_in: LocalCreate):
+    """
+    Validador de Edição de Local.
+    """
+    validar_geometria(local_in)
+    
+    local_atualizado = Local(
+        id=local_id,
+        data_criacao=datetime.now(), 
+        **local_in.model_dump()
+    )
+    return local_atualizado
+
+def validar_geometria(local_in: LocalCreate):
+    if local_in.area_m2 <= 0:
+        raise HTTPException(status_code=400, detail="A área deve ser maior que zero.")
+    
+    if local_in.perimetro_m <= 0:
+        raise HTTPException(status_code=400, detail="O perímetro deve ser maior que zero.")
+
+    # Validação Geométrica Básica (Evita dados impossíveis)
+    if local_in.perimetro_m < (local_in.area_m2 ** 0.5) * 2:
+         raise HTTPException(status_code=400, detail="Perímetro muito pequeno para a área informada (Geometria impossível).")
+''',
+
+    # --------------------------------------------------------------------------
+    # 2. FRONTEND - API CLIENT (UPDATE LOCAL)
+    # --------------------------------------------------------------------------
+    "frontend/src/api/client.ts": r'''
+import axios from 'axios';
+import { Zona, Local, PresetZona } from '../types/project';
+
+const api = axios.create({
+  baseURL: 'http://localhost:8000/api/v1',
+});
+
+export interface OpcoesInfluencias {
+  temperatura: { codigo: string; descricao: string }[];
+  agua: { codigo: string; descricao: string }[];
+  solidos: { codigo: string; descricao: string }[];
+  pessoas: { codigo: string; descricao: string }[];
+  materiais: { codigo: string; descricao: string }[];
+  estrutura: { codigo: string; descricao: string }[];
+}
+
+export const ProjectService = {
+  getOpcoesInfluencias: async (): Promise<OpcoesInfluencias> => {
+    const response = await api.get<OpcoesInfluencias>('/zonas/opcoes-influencias');
+    return response.data;
+  },
+
+  getPresets: async (tipoProjeto: string): Promise<PresetZona[]> => {
+    const response = await api.get<PresetZona[]>(`/zonas/presets/${tipoProjeto}`);
+    return response.data;
+  },
+
+  createZona: async (zona: Omit<Zona, 'id' | 'data_criacao'>): Promise<Zona> => {
+    const response = await api.post<Zona>('/zonas/', zona);
+    return response.data;
+  },
+
+  updateZona: async (id: string, zona: Omit<Zona, 'id' | 'data_criacao'>): Promise<Zona> => {
+    const response = await api.put<Zona>(`/zonas/${id}`, zona);
+    return response.data;
+  },
+
+  createLocal: async (local: Omit<Local, 'id' | 'data_criacao'>): Promise<Local> => {
+    const response = await api.post<Local>('/locais/', local);
+    return response.data;
+  },
+
+  updateLocal: async (id: string, local: Omit<Local, 'id' | 'data_criacao'>): Promise<Local> => {
+    const response = await api.put<Local>(`/locais/${id}`, local);
+    return response.data;
+  }
+};
+''',
+
+    # --------------------------------------------------------------------------
+    # 3. FRONTEND - STORE (ACTIONS LOCAL)
+    # --------------------------------------------------------------------------
+    "frontend/src/store/useProjectStore.ts": r'''
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+import { Projeto, Zona, Local, Carga } from '../types/project';
+
+interface ProjectState {
+  projects: Projeto[];
+  addProject: (project: Projeto) => void;
+  updateProject: (id: string, data: Partial<Projeto>) => void;
+  deleteProject: (id: string) => void;
+  
+  // ZONAS
+  addZonaToProject: (projetoId: string, zona: Zona) => void;
+  updateZonaInProject: (projetoId: string, zonaId: string, zona: Zona) => void;
+  removeZonaFromProject: (projetoId: string, zonaId: string) => void;
+
+  // LOCAIS
+  addLocalToProject: (projetoId: string, local: Local) => void;
+  updateLocalInProject: (projetoId: string, localId: string, local: Local) => void;
+  removeLocalFromProject: (projetoId: string, localId: string) => void;
+  
+  // CARGAS
+  addCargaToProject: (projetoId: string, carga: Carga) => void;
+  removeCargaFromProject: (projetoId: string, cargaId: string) => void;
+}
+
+export const useProjectStore = create<ProjectState>()(
+  persist(
+    (set) => ({
+      projects: [],
+      
+      addProject: (project) => set((state) => ({ 
+        projects: [...state.projects, { ...project, zonas: [], locais: [], cargas: [] }] 
+      })),
+
+      updateProject: (id, data) => set((state) => ({
+        projects: state.projects.map((p) => (p.id === id ? { ...p, ...data, ultima_modificacao: new Date().toISOString() } : p)),
+      })),
+
+      deleteProject: (id) => set((state) => ({
+        projects: state.projects.filter((p) => p.id !== id),
+      })),
+
+      // --- ZONAS ---
+      addZonaToProject: (projetoId, zona) => set((state) => ({
+        projects: state.projects.map(p => {
+          if (p.id !== projetoId) return p;
+          const zonasAtuais = p.zonas || [];
+          return { ...p, zonas: [...zonasAtuais, zona], ultima_modificacao: new Date().toISOString() };
+        })
+      })),
+
+      updateZonaInProject: (projetoId, zonaId, zonaAtualizada) => set((state) => ({
+        projects: state.projects.map(p => {
+          if (p.id !== projetoId) return p;
+          return {
+             ...p,
+             zonas: p.zonas.map(z => z.id === zonaId ? zonaAtualizada : z),
+             ultima_modificacao: new Date().toISOString()
+          };
+        })
+      })),
+
+      removeZonaFromProject: (projetoId, zonaId) => set((state) => ({
+        projects: state.projects.map(p => {
+            if (p.id !== projetoId) return p;
+            return {
+                ...p,
+                zonas: p.zonas.filter(z => z.id !== zonaId),
+                ultima_modificacao: new Date().toISOString()
+            };
+        })
+      })),
+
+      // --- LOCAIS ---
+      addLocalToProject: (projetoId, local) => set((state) => ({
+        projects: state.projects.map(p => {
+          if (p.id !== projetoId) return p;
+          const locaisAtuais = p.locais || [];
+          return { ...p, locais: [...locaisAtuais, local], ultima_modificacao: new Date().toISOString() };
+        })
+      })),
+
+      updateLocalInProject: (projetoId, localId, localAtualizado) => set((state) => ({
+        projects: state.projects.map(p => {
+          if (p.id !== projetoId) return p;
+          return {
+             ...p,
+             locais: (p.locais || []).map(l => l.id === localId ? localAtualizado : l),
+             ultima_modificacao: new Date().toISOString()
+          };
+        })
+      })),
+
+      removeLocalFromProject: (projetoId, localId) => set((state) => ({
+        projects: state.projects.map(p => {
+            if (p.id !== projetoId) return p;
+            return {
+                ...p,
+                locais: (p.locais || []).filter(l => l.id !== localId),
+                ultima_modificacao: new Date().toISOString()
+            };
+        })
+      })),
+
+      // --- CARGAS ---
+      addCargaToProject: (projetoId, carga) => set((state) => ({
+        projects: state.projects.map(p => {
+          if (p.id !== projetoId) return p;
+          const cargasAtuais = p.cargas || [];
+          return { ...p, cargas: [...cargasAtuais, carga], ultima_modificacao: new Date().toISOString() };
+        })
+      })),
+
+      removeCargaFromProject: (projetoId, cargaId) => set((state) => ({
+        projects: state.projects.map(p => {
+          if (p.id !== projetoId) return p;
+          return { 
+            ...p, 
+            cargas: (p.cargas || []).filter(c => c.id !== cargaId), 
+            ultima_modificacao: new Date().toISOString() 
+          };
+        })
+      })),
+    }),
+    {
+      name: 'projel-storage',
+    }
+  )
+);
+''',
+
+    # --------------------------------------------------------------------------
+    # 4. FRONTEND - UI (PROJECT DETAILS COM EDIT/DELETE DE LOCAIS)
+    # --------------------------------------------------------------------------
+    "frontend/src/pages/ProjectDetails.tsx": r'''
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
@@ -13,9 +264,8 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 
 import { useProjectStore } from '../store/useProjectStore';
-import { ProjectService } from '../api/client';
-import type { OpcoesInfluencias } from '../api/client';
-import type { Zona, Local, PresetZona } from '../types/project';
+import { ProjectService, OpcoesInfluencias } from '../api/client';
+import { Zona, Local, PresetZona } from '../types/project';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -513,3 +763,29 @@ const ProjectDetails: React.FC = () => {
 };
 
 export default ProjectDetails;
+'''
+}
+
+def main():
+    base_dir = os.getcwd()
+    print(f"--- Iniciando implementação de Edit/Delete de Locais em: {base_dir} ---")
+
+    for file_path, content in files_content.items():
+        full_path = os.path.join(base_dir, file_path)
+        dir_name = os.path.dirname(full_path)
+        if dir_name and not os.path.exists(dir_name):
+            os.makedirs(dir_name)
+        
+        try:
+            with open(full_path, "w", encoding="utf-8") as f:
+                f.write(content.strip())
+            print(f"✅ Atualizado: {file_path}")
+        except Exception as e:
+            print(f"❌ Erro ao atualizar {file_path}: {e}")
+
+    print("\n--- Atualização Concluída ---")
+    print("1. Reinicie o Backend (uvicorn)")
+    print("2. A UI agora permite editar e excluir locais (cômodos).")
+
+if __name__ == "__main__":
+    main()
