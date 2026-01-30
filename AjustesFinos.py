@@ -1,3 +1,14 @@
+import os
+
+# ==============================================================================
+# SCRIPT DE CORREÇÃO EMERGENCIAL: RESTAURAÇÃO DE FUNCIONALIDADES
+# ==============================================================================
+# 1. Restaura BatchCargasDialog (Entrada em lote/planilha).
+# 2. Expande formulário de Zonas para exibir TODAS as influências (AA, AD, AE, BA, CA, CB).
+# ==============================================================================
+
+files_content = {
+    "frontend/src/pages/ProjectDetails.tsx": r'''
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
@@ -607,3 +618,20 @@ const ProjectDetails: React.FC = () => {
 };
 
 export default ProjectDetails;
+'''
+}
+
+def main():
+    base_dir = os.getcwd()
+    for file_path, content in files_content.items():
+        full_path = os.path.join(base_dir, file_path)
+        os.makedirs(os.path.dirname(full_path), exist_ok=True)
+        try:
+            with open(full_path, "w", encoding="utf-8") as f:
+                f.write(content.strip())
+            print(f"✅ Arquivo corrigido: {file_path}")
+        except Exception as e:
+            print(f"❌ Erro ao escrever {file_path}: {e}")
+
+if __name__ == "__main__":
+    main()

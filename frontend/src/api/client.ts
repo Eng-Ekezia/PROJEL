@@ -1,9 +1,7 @@
 import axios from 'axios';
-import type { Zona, Local, PresetZona } from '../types/project';
+import type { Zona, Local, PresetZona, Carga } from '../types/project';
 
-const api = axios.create({
-  baseURL: 'http://localhost:8000/api/v1',
-});
+const api = axios.create({ baseURL: 'http://localhost:8000/api/v1' });
 
 export interface OpcoesInfluencias {
   temperatura: { codigo: string; descricao: string }[];
@@ -14,34 +12,38 @@ export interface OpcoesInfluencias {
   estrutura: { codigo: string; descricao: string }[];
 }
 
+export interface CargaCreateDTO {
+    projeto_id: string; 
+    local_id: string;
+    nome: string;
+    tipo: string;
+    quantidade: number;
+    potencia: number;
+    unidade: 'W' | 'VA';
+    fator_potencia: number;
+}
+
+export interface CalculoNBRResult {
+    norma_iluminacao_va: number;
+    norma_tugs_quantidade: number;
+}
+
 export const ProjectService = {
-  getOpcoesInfluencias: async (): Promise<OpcoesInfluencias> => {
-    const response = await api.get<OpcoesInfluencias>('/zonas/opcoes-influencias');
-    return response.data;
-  },
+  getOpcoesInfluencias: async () => (await api.get<OpcoesInfluencias>('/zonas/opcoes-influencias')).data,
+  getPresets: async (tipo: string) => (await api.get<PresetZona[]>(`/zonas/presets/${tipo}`)).data,
 
-  getPresets: async (tipoProjeto: string): Promise<PresetZona[]> => {
-    const response = await api.get<PresetZona[]>(`/zonas/presets/${tipoProjeto}`);
-    return response.data;
-  },
+  createZona: async (z: Partial<Zona>) => (await api.post<Zona>('/zonas/', z)).data,
+  updateZona: async (id: string, z: Partial<Zona>) => (await api.put<Zona>(`/zonas/${id}`, z)).data,
+  deleteZona: async (id: string) => await api.delete(`/zonas/${id}`),
 
-  createZona: async (zona: Omit<Zona, 'id' | 'data_criacao'>): Promise<Zona> => {
-    const response = await api.post<Zona>('/zonas/', zona);
-    return response.data;
-  },
+  createLocal: async (l: Omit<Local, 'id' | 'data_criacao'>) => (await api.post<Local>('/locais/', l)).data,
+  updateLocal: async (id: string, l: Omit<Local, 'id' | 'data_criacao'>) => (await api.put<Local>(`/locais/${id}`, l)).data,
+  deleteLocal: async (id: string) => await api.delete(`/locais/${id}`),
 
-  updateZona: async (id: string, zona: Omit<Zona, 'id' | 'data_criacao'>): Promise<Zona> => {
-    const response = await api.put<Zona>(`/zonas/${id}`, zona);
-    return response.data;
-  },
+  createCarga: async (c: CargaCreateDTO) => (await api.post<Carga>('/cargas/', c)).data,
+  updateCarga: async (id: string, c: CargaCreateDTO) => (await api.put<Carga>(`/cargas/${id}`, c)).data,
+  deleteCarga: async (id: string) => await api.delete(`/cargas/${id}`),
 
-  createLocal: async (local: Omit<Local, 'id' | 'data_criacao'>): Promise<Local> => {
-    const response = await api.post<Local>('/locais/', local);
-    return response.data;
-  },
-
-  updateLocal: async (id: string, local: Omit<Local, 'id' | 'data_criacao'>): Promise<Local> => {
-    const response = await api.put<Local>(`/locais/${id}`, local);
-    return response.data;
-  }
+  calcularMinimoNBR: async (area: number, perim: number, umida: boolean) => 
+    (await api.post<CalculoNBRResult>('/cargas/calcular-minimo-nbr', { area, perimetro: perim, eh_cozinha_servico: umida })).data
 };

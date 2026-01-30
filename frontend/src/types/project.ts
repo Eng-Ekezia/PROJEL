@@ -33,17 +33,19 @@ export interface Local {
 
 export interface Carga {
   id: string;
-  projeto_id: string;
+  local_id: string; // Adicionado
   nome: string;
-  tipo_carga: string;
-  potencia_W: number;
+  tipo: string; // Backend usa "tipo", não "tipo_carga"
+  potencia_w: number; // Backend usa lowercase
+  potencia_va: number; // Adicionado
+  fator_potencia: number; // Adicionado
   quantidade: number;
 }
 
 export interface Projeto {
   id: string;
   nome: string;
-  tipo_instalacao: string; // 'Residencial' | 'Comercial' | 'Industrial'
+  tipo_instalacao: string;
   tensao_sistema: string;
   sistema: string;
   esquema_aterramento: string;

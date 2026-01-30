@@ -1,0 +1,256 @@
+{
+  "project": {
+    "name": "webapp-dimensionamento-nbr5410",
+    "purpose": "Aplicacao web didatica para apoio ao dimensionamento de circuitos eletricos conforme ABNT NBR 5410, substituindo planilhas e reforcando o raciocinio de engenharia",
+    "target_audience": [
+      "engenharia civil",
+      "engenharia de energia",
+      "estudantes de eletrotecnica"
+    ],
+    "constraints": {
+      "cost": "zero (forever free)",
+      "license": "open-source",
+      "deployment": "stateless backend (free-tier friendly)",
+      "privacy": "local-first (sem banco de dados no servidor)"
+    },
+    "core_principles": [
+      "engenharia antes de calculo",
+      "contexto antes de circuito",
+      "norma como regra explicita e auditavel",
+      "usuario descreve a realidade, sistema traduz para a norma",
+      "rastreabilidade total das decisoes"
+    ]
+  },
+  "technology_stack": {
+    "frontend": {
+      "framework": "React",
+      "language": "TypeScript (Strict Mode / VerbatimModuleSyntax)",
+      "bundler": "Vite (Composite Mode)",
+      "ui_library": "Material UI (MUI) v6",
+      "state_management": "Zustand + Persist Middleware (LocalStorage)"
+    },
+    "backend": {
+      "framework": "FastAPI",
+      "language": "Python",
+      "python_version": ">=3.11",
+      "architecture": "Stateless (Calculation Engine)"
+    },
+    "database": {
+      "type": "None (Server-side) / LocalStorage (Client-side)",
+      "usage": [
+        "persistencia no navegador do usuario via Zustand",
+        "exportacao/importacao via JSON",
+        "total privacidade de dados"
+      ]
+    },
+    "deployment": {
+      "frontend": "Vercel",
+      "backend": "Render (Web Service)"
+    }
+  },
+  "roadmap": [
+    {
+      "phase": "00",
+      "name": "Congelamento conceitual e Arquitetural",
+      "objective": "Definir limites do sistema e estrategia de dados",
+      "outputs": [
+        "decisao por arquitetura stateless",
+        "modelo de dados JSON portavel",
+        "alinhamento com NBR 5410"
+      ],
+      "status": "concluido"
+    },
+    {
+      "phase": "01",
+      "name": "Preparacao do ambiente",
+      "objective": "Criar ambiente reprodutivel",
+      "steps": [
+        "Python 3.11+",
+        "Node.js (LTS)",
+        "Configuracao de VENV",
+        "Instalacao de dependencias (FastAPI, Pydantic, Uvicorn)"
+      ],
+      "deliverable": "Ambiente local configurado",
+      "status": "concluido"
+    },
+    {
+      "phase": "02",
+      "name": "Organizacao do Monorepo",
+      "objective": "Estrutura de codigo limpa e separada por responsabilidade",
+      "details": {
+        "repository": {
+          "type": "monorepo",
+          "structure": [
+            "/frontend",
+            "/backend",
+            "/domain_core",
+            "/docs"
+          ]
+        },
+        "git_strategy": {
+          "gitignore": "unificado (python + node)",
+          "branching": "main based"
+        }
+      },
+      "deliverable": "Repositorio Git inicializado com estrutura de pastas",
+      "status": "concluido"
+    },
+    {
+      "phase": "03",
+      "name": "Configuracao do Backend Stateless",
+      "objective": "Criar API de processamento puro (sem persistencia)",
+      "principles": [
+        "API nao salva estado",
+        "API recebe Projeto -> Devolve Resultado",
+        "Validacao forte na entrada (Pydantic)"
+      ],
+      "initial_endpoints": [
+        "/health",
+        "/version",
+        "/v1/calcular/dimensionamento",
+        "/v1/calcular/demanda"
+      ],
+      "deliverable": "API rodando com Swagger/OpenAPI",
+      "status": "concluido"
+    },
+    {
+      "phase": "04",
+      "name": "Configuracao do Frontend & Estado Global",
+      "objective": "Criar base de UX e gerenciador de estado persistente",
+      "principles": [
+        "Linguagem humana",
+        "Feedback imediato",
+        "Persistencia automatica no navegador"
+      ],
+      "milestones": [
+        "Integracao do Zustand para gerenciamento de estado global",
+        "Configuracao rigorosa do TypeScript (Composite Mode / noEmit)",
+        "Resolucao de conflitos de importacao de tipos (VerbatimModuleSyntax)",
+        "Dashboard de Projetos funcional com CRUD basico"
+      ],
+      "deliverable": "Frontend React inicializado com Store Zustand persistente",
+      "status": "concluido"
+    },
+    {
+      "phase": "05",
+      "name": "Modelagem do dominio eletrico (Core)",
+      "objective": "Traduzir NBR 5410 para classes Python ricas e interfaces TS",
+      "schemas": {
+        "ProjetoEletrico": "Concluido",
+        "ZonaDeInfluencia": "Concluido (com Presets)",
+        "Local": "Concluido (Validacao Geometrica)",
+        "Circuito": "Pendente"
+      },
+      "rules": [
+        "Validacao de Potencia vs Corrente (Mutuamente Exclusivos)",
+        "Heranca de influencias da zona para os circuitos"
+      ],
+      "deliverable": "Modulo domain_core auditado e Interfaces TS sincronizadas",
+      "status": "concluido"
+    },
+    {
+      "phase": "06",
+      "name": "UX de Contexto e Presets Normativos",
+      "objective": "Facilitar a entrada de dados com modelos da NBR 5410 (Zonas e Locais)",
+      "features": [
+        "Presets de Zonas (Residencial, Comercial)",
+        "Wizard de Criacao de Zonas e Locais",
+        "Edicao e Exclusao de Entidades",
+        "Validacao visual de status (Preset vs Custom)"
+      ],
+      "deliverable": "Interface de Zonas e Locais funcional e auditavel",
+      "status": "concluido"
+    },
+    {
+      "phase": "07",
+      "name": "Gerenciamento de Cargas e Pontos",
+      "objective": "Definir cargas (Iluminacao, TUGs, TUEs) dentro dos locais",
+      "features": [
+        "CRUD de Cargas por Local",
+        "Sugestao Normativa (Previsao de Cargas NBR 5410 item 9.5.2)",
+        "Calculo automatico de potencia instalada (VA/W)"
+      ],
+      "deliverable": "Locais povoados com pontos eletricos",
+      "status": "pendente"
+    },
+    {
+      "phase": "08",
+      "name": "Modelagem de Circuitos",
+      "objective": "Agrupar cargas em circuitos e definir protecao base",
+      "features": [
+        "Criacao de Circuitos",
+        "Agrupamento de Cargas por Zona/Local",
+        "Validacao de limites normativos de agrupamento"
+      ],
+      "deliverable": "Circuitos definidos prontos para calculo",
+      "status": "pendente"
+    },
+    {
+      "phase": "09",
+      "name": "Motor de calculo normativo",
+      "objective": "Implementar a inteligencia de engenharia",
+      "calculations": [
+        "Ib: Corrente de projeto",
+        "Iz: Capacidade de conducao corrigida (FCT * FCA)",
+        "Queda de tensao (V%)",
+        "Selecao de Disjuntor (Ib <= In <= Iz)"
+      ],
+      "output_schema": {
+        "ResultadoDimensionamento": {
+          "corrente_projeto": "number",
+          "secao_condutor_mm2": "number",
+          "dispositivo_protecao": "string",
+          "memoria_calculo": "string[]"
+        }
+      },
+      "deliverable": "Endpoint de calculo retornando resultados corretos",
+      "status": "pendente"
+    },
+    {
+      "phase": "10",
+      "name": "Modulo de demanda",
+      "objective": "Calculo independente por concessionaria",
+      "initial_provider": "CEMIG (ND-5.1)",
+      "deliverable": "Calculadora de demanda anexada ao projeto",
+      "status": "pendente"
+    },
+    {
+      "phase": "11",
+      "name": "Persistencia Local e Portabilidade",
+      "objective": "Gerenciar dados sem servidor",
+      "features": [
+        "Exportar JSON: Baixar projeto para backup/compartilhamento",
+        "Importar JSON: Carregar projeto de colega/professor"
+      ],
+      "deliverable": "Sistema de Arquivos Virtual no Frontend",
+      "status": "parcialmente_concluido"
+    },
+    {
+      "phase": "12",
+      "name": "Testes e Validacao",
+      "objective": "Garantia de qualidade didatica",
+      "tests": [
+        "Unitarios: Formulas da NBR",
+        "Integracao: Frontend -> Backend -> Frontend",
+        "End-to-End: Fluxo completo de um projeto residencial"
+      ],
+      "deliverable": "Suite de testes verde",
+      "status": "pendente"
+    },
+    {
+      "phase": "13",
+      "name": "Deploy e Documentacao",
+      "objective": "Lancar versao publica",
+      "deploy_strategy": {
+        "Backend": "Render Free Tier (Stateless)",
+        "Frontend": "Vercel (Global CDN)"
+      },
+      "docs": [
+        "Manual do Usuario",
+        "Nota Tecnica sobre as simplificacoes assumidas"
+      ],
+      "deliverable": "URL publica acessivel",
+      "status": "pendente"
+    }
+  ]
+}
