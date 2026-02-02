@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+/*import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Container, Typography, Button, Grid, Card, CardContent, CardActions, 
@@ -202,4 +202,141 @@ const Dashboard: React.FC = () => {
   );
 };
 
-export default Dashboard;
+export default Dashboard;*/
+
+import { useEffect } from "react"
+import { useNavigate } from "react-router-dom"
+import { Plus, Folder, Zap } from "lucide-react"
+
+// Componentes Shadcn UI
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from "@/components/ui/table"
+
+// Store e Serviços
+import { useProjectStore } from "../store/useProjectStore"
+import { ProjectService } from "../api/client"
+
+export default function Dashboard() {
+  const navigate = useNavigate()
+  const { projects, setProjects, addProject } = useProjectStore()
+
+  // Carrega projetos ao montar
+  /*useEffect(() => {
+    ProjectService.getAll().then(setProjects).catch(console.error)
+  }, [setProjects])*/
+
+  const handleCreateProject = () => {
+    const nome = prompt("Nome do novo projeto:")
+    if (!nome) return
+
+    const newProject = {
+      id: crypto.randomUUID(), // Gera ID local único
+      nome,
+      tipo_instalacao: "RESIDENCIAL",
+      tensao_sistema: "220/127V",
+      sistema: "MONOFASICO",
+      data_criacao: new Date().toISOString(),
+      ultima_modificacao: new Date().toISOString(),
+      zonas: [],
+      locais: [],
+      cargas: []
+    } as any; // Cast simples para evitar erro de tipagem estrita no dummy
+
+    addProject(newProject)
+    // Feedback visual (opcional)
+    // toast("Projeto criado!") 
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      {/* Cabeçalho da Página */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Meus Projetos</h1>
+          <p className="text-muted-foreground">
+            Gerencie seus projetos elétricos e dimensionamentos.
+          </p>
+        </div>
+        <Button onClick={handleCreateProject}>
+          <Plus className="mr-2 h-4 w-4" /> Novo Projeto
+        </Button>
+      </div>
+
+      {/* Cartões de Resumo (Opcional, para dar um visual legal) */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total de Projetos</CardTitle>
+            <Folder className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{projects.length}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Potência Total</CardTitle>
+            <Zap className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">-- kVA</div>
+            <p className="text-xs text-muted-foreground">Soma de todos os projetos</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Tabela de Projetos */}
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Nome do Projeto</TableHead>
+              <TableHead>Tipo</TableHead>
+              <TableHead>Sistema</TableHead>
+              <TableHead className="text-right">Ações</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {projects.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={4} className="h-24 text-center">
+                  Nenhum projeto encontrado. Crie o primeiro!
+                </TableCell>
+              </TableRow>
+            ) : (
+              projects.map((project) => (
+                <TableRow 
+                  key={project.id} 
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => navigate(`/project/${project.id}`)}
+                >
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      <div className="h-8 w-8 rounded bg-primary/10 flex items-center justify-center text-primary">
+                        <Folder className="h-4 w-4" />
+                      </div>
+                      {project.nome}
+                    </div>
+                  </TableCell>
+                  <TableCell>{project.tipo_instalacao}</TableCell>
+                  <TableCell>{project.sistema} - {project.tensao_sistema}</TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="ghost" size="sm">Abrir</Button>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  )
+}

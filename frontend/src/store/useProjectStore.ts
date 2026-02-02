@@ -1,14 +1,14 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-// FIX: Usando 'import type' para satisfazer verbatimModuleSyntax
 import type { Projeto, Zona, Local, Carga } from '../types/project';
 
 interface ProjectState {
   projects: Projeto[];
   
   // Project Actions
-  createProject: (project: Projeto) => void;
-  updateProject: (project: Projeto) => void; // FIX: Adicionado
+  setProjects: (projects: Projeto[]) => void; // Adicionado
+  addProject: (project: Projeto) => void;     // Renomeado/Alias para createProject para consistência
+  updateProject: (project: Projeto) => void;
   deleteProject: (id: string) => void;
   
   // Zona Actions
@@ -33,12 +33,16 @@ export const useProjectStore = create<ProjectState>()(
       projects: [],
       
       // --- PROJECT IMPLEMENTATION ---
-      createProject: (project) => set((state) => ({ 
+      setProjects: (projects) => set({ projects }), // Implementação nova
+      
+      addProject: (project) => set((state) => ({ 
           projects: [...state.projects, project] 
       })),
+
       updateProject: (project) => set((state) => ({
           projects: state.projects.map(p => p.id === project.id ? project : p)
       })),
+      
       deleteProject: (id) => set((state) => ({ 
           projects: state.projects.filter(p => p.id !== id) 
       })),
