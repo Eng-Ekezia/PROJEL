@@ -1,0 +1,146 @@
+{
+  "norma": {
+    "codigo": "NBR 5410",
+    "ano": 2005,
+    "titulo": "Instalações elétricas de baixa tensão",
+    "status": "vigente",
+    "observacoes": "Repositório normativo para uso didático no PROJEL"
+  },
+
+  "influencias_externas": {
+    "categorias": {
+      "A": {
+        "descricao": "Meio ambiente",
+        "codigos": {
+          "AA": {
+            "descricao": "Temperatura ambiente",
+            "classes": {
+              "1": { "descricao": "normal" },
+              "2": { "descricao": "elevada" },
+              "3": { "descricao": "muito elevada" }
+            }
+          },
+          "AC": {
+            "descricao": "Presença de água",
+            "classes": {
+              "1": { "descricao": "seca" },
+              "2": { "descricao": "úmida" },
+              "3": { "descricao": "molhada" }
+            }
+          }
+        }
+      },
+      "B": {
+        "descricao": "Utilização",
+        "codigos": {
+          "BA": {
+            "descricao": "Competência das pessoas",
+            "classes": {
+              "1": "pessoas comuns",
+              "2": "pessoas advertidas",
+              "3": "pessoas qualificadas"
+            }
+          }
+        }
+      },
+      "C": {
+        "descricao": "Construção da edificação",
+        "codigos": {
+          "CB": {
+            "descricao": "Estruturas metálicas acessíveis",
+            "classes": {
+              "1": "ausente",
+              "2": "presente"
+            }
+          }
+        }
+      }
+    }
+  },
+
+  "fatores_correcao": {
+    "temperatura": {
+      "referencia": "Tabela 43",
+      "isolacao": {
+        "PVC": {
+          "30": 1.00,
+          "35": 0.94,
+          "40": 0.87,
+          "45": 0.79
+        }
+      }
+    },
+    "agrupamento": {
+      "referencia": "Tabela 44",
+      "fatores": {
+        "1": 1.00,
+        "2": 0.80,
+        "3": 0.70,
+        "4": 0.65
+      }
+    }
+  },
+
+  "capacidade_conducao_corrente": {
+    "referencia": "Tabelas 36 a 39",
+    "condutores": {
+      "cobre": {
+        "PVC": {
+          "B1": {
+            "1.5": 15,
+            "2.5": 21,
+            "4": 28,
+            "6": 36
+          }
+        }
+      }
+    }
+  },
+
+  "queda_tensao": {
+    "limites": {
+      "iluminacao": {
+        "percentual": 3,
+        "referencia": "6.2.7.2"
+      },
+      "outros": {
+        "percentual": 4,
+        "referencia": "6.2.7.2"
+      }
+    }
+  },
+
+  "protecao_sobrecorrente": {
+    "criterios": {
+      "Ib_le_Iz": {
+        "descricao": "Corrente de projeto menor ou igual à capacidade do condutor",
+        "referencia": "6.3.2"
+      },
+      "In_le_Iz": {
+        "descricao": "Corrente nominal do dispositivo menor ou igual à capacidade do condutor",
+        "referencia": "6.3.2"
+      }
+    }
+  },
+
+  "curto_circuito": {
+    "referencia": "6.4.3",
+    "formula_termica": "I^2 * t <= k^2 * S^2",
+    "constantes_k": {
+      "cobre_PVC": 115
+    }
+  },
+
+  "capitulo_9": {
+    "banheiro_chuveiro": {
+      "exige_DR": true,
+      "sensibilidade_mA": 30,
+      "referencia": "9.1.1"
+    },
+    "piscina": {
+      "exige_DR": true,
+      "equipotencializacao": true,
+      "referencia": "9.3"
+    }
+  }
+}

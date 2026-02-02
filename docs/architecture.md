@@ -1,136 +1,266 @@
-# Arquitetura do PROJEL
+# 📄 `architecture.md`
 
-Este documento descreve a arquitetura do PROJEL, suas camadas,
-responsabilidades e contratos. O objetivo é garantir clareza técnica,
-evitar acoplamento indevido e preservar o raciocínio de engenharia
-embutido no sistema.
+## Arquitetura Conceitual e Técnica do PROJEL
 
-O PROJEL não é uma calculadora elétrica.
-É um sistema de apoio ao projeto elétrico conforme a NBR 5410,
-orientado por contexto, decisões explícitas e rastreabilidade normativa.
+**Versão consolidada – base oficial do projeto**
 
 ---
 
-## 1. Visão geral da arquitetura
+## 1. Propósito deste documento
 
-O PROJEL adota uma arquitetura em camadas bem definidas, onde cada parte
-possui responsabilidades claras e limites explícitos.
+Este documento define a **arquitetura conceitual e técnica** do PROJEL.
 
-### Princípio central
+Ele existe para:
 
-> O domínio decide o que é engenharia.  
-> As demais camadas apenas conversam com ele.
+* orientar desenvolvimento
+* evitar decisões contraditórias
+* servir como referência para revisões futuras
+* impedir que o sistema se degrade em uma “calculadora bonita”
 
----
-
-## 2. Diagrama de camadas e responsabilidades
-
-```mermaid
-graph TD
-
-UI[Frontend / UX]
-API[Backend / FastAPI]
-DOMAIN[Domain Core]
-DB[(Persistencia)]
-
-UI --> API
-API --> DOMAIN
-API --> DB
-
-DOMAIN -.-> UI
-DOMAIN -.-> API
-DB -.-> DOMAIN
-````
-
-### Interpretação
-
-* O **Frontend** coleta decisões humanas e apresenta resultados.
-* O **Backend** orquestra chamadas e valida contratos.
-* O **Domain Core** contém toda a lógica de engenharia e norma.
-* A **Persistência** apenas armazena dados, sem inteligência.
-
-Dependências pontilhadas indicam **dependências proibidas**.
+Nenhum código, tela ou fluxo pode contradizer este documento.
 
 ---
 
-## 3. Domain Core
+## 2. Princípios fundamentais do PROJEL
 
-O `domain_core` é independente de:
+O PROJEL é regido por três princípios inegociáveis:
 
-* web
-* banco de dados
-* interface gráfica
+### 2.1 Decisão é humana
 
-Ele pode ser reutilizado em:
+O sistema **nunca decide** aquilo que é decisão de projeto.
 
-* API
-* CLI
-* aplicação desktop
-* integração futura com CAD/BIM
+### 2.2 Regra é normativa
 
-### Submódulos
+A NBR 5410 é tratada como **sistema de restrições e condicionantes**, não como tabela de consulta solta.
 
-* `enums`: vocabulário normativo fechado
-* `schemas`: estruturas e validações de dados
-* `rules`: regras de decisão e herança
-* `calculations`: cálculos elétricos normativos
+### 2.3 Cálculo é mecânico
+
+O motor de cálculo **executa**, **verifica** e **compara**.
+Ele **não escolhe** alternativas.
+
+> Se uma decisão não foi explicitamente tomada pelo usuário, ela não pode existir no sistema.
 
 ---
 
-## 4. Diagrama de contratos entre camadas
+## 3. Visão geral da arquitetura
 
-Os contratos definem exatamente o que cada camada pode enviar ou receber.
+O PROJEL adota uma arquitetura **orientada a domínio**, com separação rígida entre:
 
-```mermaid
-graph LR
+* domínio elétrico
+* interface
+* orquestração
+* persistência
 
-UI -->|Input humano estruturado| API
-API -->|Schemas validados| DOMAIN
-DOMAIN -->|ResultadoDimensionamento| API
-API -->|Resultado formatado| UI
+A arquitetura existe para **proteger o domínio**, não para facilitar atalhos de implementação.
+
+---
+
+## 4. Camadas do sistema
+
+### 4.1 UI / UX (Frontend)
+
+Responsabilidade:
+
+* coletar decisões explícitas
+* impedir avanço sem pré-condições
+* tornar contexto normativo visível
+* expor consequências das escolhas
+
+A UI **não interpreta norma**, **não calcula** e **não corrige decisões**.
+
+---
+
+### 4.2 API / Orquestração
+
+Responsabilidade:
+
+* receber decisões do frontend
+* validar estrutura e completude
+* encaminhar ao domínio
+* devolver respostas explicáveis
+
+A API **não contém regra elétrica**.
+
+---
+
+### 4.3 Domain Core (núcleo do sistema)
+
+Responsabilidade:
+
+* conter toda a lógica normativa
+* definir entidades
+* aplicar validações normativas
+* executar cálculos
+
+Toda regra elétrica **vive aqui**.
+
+---
+
+### 4.4 Persistência
+
+Responsabilidade:
+
+* armazenar estado
+* versionar decisões
+* recuperar projetos
+
+Persistência **não valida** e **não decide**.
+
+---
+
+## 5. Hierarquia obrigatória de entidades
+
+O PROJEL possui uma hierarquia rígida. Nenhuma entidade pode “pular” níveis.
+
+```
+Projeto
+ └── Zona
+     └── Local
+         └── Carga
+             └── Proposta de Circuito
+                 └── Circuito
+                     └── Resultado de Dimensionamento
 ```
 
-### Regras fundamentais
-
-* A UI nunca envia dados soltos.
-* A API nunca interpreta norma.
-* O domínio nunca formata resposta para humanos.
+Qualquer implementação que permita criar uma entidade fora dessa ordem está errada.
 
 ---
 
-## 5. Fluxo normativo de decisão
+## 6. Entidades e seus papéis (visão arquitetural)
 
-O PROJEL não executa cálculo sem contexto válido.
+### 6.1 Projeto
 
-```mermaid
-flowchart TD
+Define o **contexto elétrico global**:
 
-A[Projeto definido] --> B[Zonas de influencia]
-B --> C{Influencias completas?}
-C -- Nao --> X[Projeto invalido]
-C -- Sim --> D[Circuitos definidos]
-D --> E[Heranca de influencias]
-E --> F[Calculo eletrico]
-F --> G{Atende NBR 5410?}
-G -- Nao --> H[Ajustes necessarios]
-G -- Sim --> I[Resultado aprovado]
-```
+* sistema elétrico
+* tensões
+* esquema de aterramento
+* diretrizes gerais
 
-Esse fluxo reflete o raciocínio real de projeto elétrico,
-não uma sequência mecânica de fórmulas.
+Não contém cargas nem circuitos.
 
 ---
 
-## 6. Considerações finais
+### 6.2 Zona
 
-Esta arquitetura foi projetada para:
+Define o **contexto normativo dominante**:
 
-* evitar lógica duplicada
-* garantir rastreabilidade normativa
-* preservar o raciocínio de engenharia
-* facilitar ensino e manutenção
+* influências externas (A, B, C)
+* severidade
+* exigências de proteção
 
-Qualquer modificação no sistema deve respeitar
-as responsabilidades aqui descritas.
+Zona governa tudo que está abaixo dela.
 
-````
+---
+
+### 6.3 Local
+
+Representa o **ambiente físico funcional**:
+
+* área
+* perímetro
+* uso
+* vínculo com Zona
+
+Local é a ponte entre espaço físico e norma.
+
+---
+
+### 6.4 Carga
+
+Representa uma **demanda elétrica**:
+
+* iluminação (normativa)
+* TUG (normativa)
+* TUE (explícita)
+
+Carga nunca decide, nunca agrupa e nunca calcula.
+
+---
+
+### 6.5 Proposta de Circuito
+
+Representa uma **intenção de agrupamento**:
+
+* ainda sem cálculo
+* ainda sem proteção
+* ainda sem seção
+
+É um rascunho consciente, não um circuito.
+
+---
+
+### 6.6 Circuito
+
+Representa uma **decisão formal de projeto**:
+
+* parâmetros completos
+* pronto para validação e cálculo
+
+Circuito pode ser calculado. Proposta não.
+
+---
+
+### 6.7 Resultado de Dimensionamento
+
+Representa:
+
+* valores calculados
+* limites normativos
+* margens técnicas
+* condicionantes
+
+Resultado **explica**, não apenas informa.
+
+---
+
+## 7. Fluxo normativo obrigatório
+
+Nenhuma etapa pode ser pulada.
+
+1. Definir Projeto
+2. Definir Zonas
+3. Definir Locais
+4. Gerar e revisar Cargas
+5. Agrupar cargas (Wizard)
+6. Criar Propostas de Circuito
+7. Converter em Circuitos
+8. Validar contexto normativo
+9. Dimensionar
+10. Analisar resultados
+
+O sistema deve **bloquear** qualquer tentativa de avanço fora dessa ordem.
+
+---
+
+## 8. Separação interna no Domain Core
+
+O núcleo do domínio deve separar claramente:
+
+* validação estrutural
+* validação normativa
+* cálculo elétrico
+
+Nenhuma função pode fazer as três coisas ao mesmo tempo.
+
+---
+
+## 9. Tratamento de erros e alertas
+
+* **Erro**: decisão inválida → bloqueio
+* **Alerta**: decisão válida com risco → aviso explícito
+
+Nunca mascarar erro como alerta.
+
+---
+
+## 10. Regra final da arquitetura
+
+> O PROJEL deve ser mais rígido que o aluno
+> e mais honesto que uma planilha.
+
+Se essa frase continuar verdadeira, a arquitetura está correta.
+
+---
+
+**Fim do arquivo `architecture.md`.**

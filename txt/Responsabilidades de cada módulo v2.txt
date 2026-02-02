@@ -1,0 +1,341 @@
+# PROJEL – Divisão Clara de Responsabilidades
+
+---
+
+## 1. Usuário (Aluno / Projetista)
+
+### Responsabilidade
+
+Tomar **todas as decisões de projeto**.
+
+### Decide explicitamente:
+
+* tipo de projeto
+* sistema elétrico
+* esquema de aterramento
+* definição de zonas
+* definição de locais
+* aceitação ou ajuste de cargas normativas
+* inclusão de TUEs
+* agrupamento de cargas em circuitos
+* parâmetros do circuito (método, proteção etc.)
+
+### Não faz:
+
+* cálculos manuais dentro do sistema
+* interpretação de tabelas normativas
+* validações ocultas
+
+O usuário **pensa**.
+O sistema **verifica**.
+
+---
+
+## 2. UI / UX (Frontend)
+
+### Papel
+
+**Guiar o raciocínio**, nunca substituí-lo.
+
+### Responsabilidades
+
+* coletar decisões explícitas do usuário
+* impedir avanço sem dados obrigatórios
+* exibir contexto normativo sempre visível
+* diferenciar:
+
+  * sugestão
+  * alerta
+  * bloqueio
+* tornar desconfortáveis as exceções
+
+### Pode fazer:
+
+* sugerir presets
+* sugerir agrupamentos
+* destacar conflitos
+* mostrar consequências
+
+### Não pode fazer:
+
+* criar circuitos automaticamente
+* assumir valores
+* “simplificar” regras
+* esconder zona, origem ou herança
+* transformar alerta em aprovação
+
+UX não “resolve”.
+UX **obriga a decidir**.
+
+---
+
+## 3. Projeto (Entidade)
+
+### Responsabilidade
+
+Definir o **contexto elétrico global**.
+
+### Contém:
+
+* sistema elétrico
+* tensões
+* esquema de aterramento
+* diretrizes gerais
+
+### Não contém:
+
+* circuitos
+* cargas
+* cálculos
+
+Projeto **governa tudo**, mas não entra em detalhe.
+
+---
+
+## 4. Zona (Entidade Normativa Dominante)
+
+### Responsabilidade
+
+Definir o **contexto normativo do ambiente**.
+
+### Contém:
+
+* influências externas A, B e C
+* origem (preset, custom, ajustada)
+* impactos normativos derivados
+
+### Governa:
+
+* Locais
+* Cargas
+* Circuitos (indiretamente)
+
+### Não faz:
+
+* cálculos
+* decisões de circuito
+* decisões de proteção
+
+Zona **manda**.
+Todo o resto **obedece ou justifica exceção**.
+
+---
+
+## 5. Local (Entidade Física-Funcional)
+
+### Responsabilidade
+
+Representar o **ambiente físico real** onde as cargas existem.
+
+### Contém:
+
+* área
+* perímetro
+* uso do ambiente
+* vínculo com Zona
+
+### Serve para:
+
+* gerar cargas normativas
+* agrupar cargas por ambiente
+* manter rastreabilidade espacial
+
+### Não faz:
+
+* decisões normativas
+* decisões elétricas
+* decisões de circuito
+
+Local é **ponte**, não juiz.
+
+---
+
+## 6. Carga (Entidade Elétrica Básica)
+
+### Tipos
+
+* Iluminação (normativa)
+* TUG (normativa)
+* TUE (explícita)
+
+### Responsabilidade
+
+Representar uma **demanda elétrica individual ou agrupada**.
+
+### Contém:
+
+* potência
+* origem (norma / usuário)
+* Local
+* Zona herdada
+
+### Não faz:
+
+* agrupamento
+* cálculo
+* proteção
+* decisão de circuito
+
+Carga **não pensa**.
+Ela só existe.
+
+---
+
+## 7. Wizard de Agrupamento
+
+### Responsabilidade
+
+Ajudar o usuário a **visualizar possibilidades de circuito**.
+
+### Faz:
+
+* lista Locais
+* lista cargas por Local
+* mostra Zona de cada carga
+* sugere agrupamentos possíveis
+* alerta sobre misturas de Zona
+
+### Não faz:
+
+* criar circuitos
+* validar norma
+* dimensionar
+* corrigir decisões
+
+Wizard **pergunta**, não responde.
+
+---
+
+## 8. Proposta de Circuito (Entidade Transitória)
+
+### Responsabilidade
+
+Registrar uma **intenção de agrupamento**.
+
+### Contém:
+
+* cargas agrupadas
+* Locais envolvidos
+* Zonas envolvidas
+* observações normativas
+
+### Não contém:
+
+* seção
+* disjuntor
+* cálculo
+* validação térmica
+
+Proposta **não é circuito**.
+É rascunho consciente.
+
+---
+
+## 9. Circuito (Entidade de Projeto)
+
+### Responsabilidade
+
+Formalizar uma **decisão de projeto elétrico**.
+
+### Contém:
+
+* cargas agrupadas
+* método de instalação
+* material
+* proteção
+* parâmetros completos
+
+### Pode:
+
+* misturar zonas (com alerta)
+* assumir a zona mais severa
+* ser calculado
+
+### Não faz:
+
+* cálculo por si só
+* validação estrutural
+
+Circuito é **decisão madura**, não sugestão.
+
+---
+
+## 10. Motor de Cálculo
+
+### Responsabilidade
+
+Executar **verificação numérica normativa**.
+
+### Faz:
+
+* cálculos elétricos
+* aplicação de fatores
+* comparação com limites
+* geração de resultados e alertas
+
+### Não faz:
+
+* decidir parâmetros
+* corrigir projeto
+* escolher alternativas
+
+Motor **julga**, não **decide**.
+
+---
+
+## 11. Validação Normativa
+
+### Responsabilidade
+
+Avaliar se decisões são:
+
+* permitidas
+* proibidas
+* condicionadas
+
+### Atua:
+
+* antes do cálculo
+* depois do cálculo
+* sempre que contexto muda
+
+### Não atua:
+
+* silenciosamente
+* implicitamente
+
+Validação **fala claro ou bloqueia**.
+
+---
+
+## 12. Resultados e Relatórios
+
+### Responsabilidade
+
+Explicar o que foi feito e por quê.
+
+### Devem conter:
+
+* valores
+* limites normativos
+* margens
+* condicionantes
+* exceções
+* zonas envolvidas
+
+### Não podem:
+
+* resumir demais
+* esconder decisões ruins
+* “embelezar” erro
+
+Resultado ensina tanto quanto o erro.
+
+---
+
+## Regra-mãe de todas as outras
+
+> **Decisão é humana.
+> Regra é normativa.
+> Cálculo é mecânico.
+> Interface é pedagógica.**
