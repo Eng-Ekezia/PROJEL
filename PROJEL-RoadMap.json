@@ -1,7 +1,9 @@
 {
   "project": {
-    "name": "webapp-dimensionamento-nbr5410",
-    "purpose": "Aplicacao web didatica para apoio ao dimensionamento de circuitos eletricos conforme ABNT NBR 5410, substituindo planilhas e reforcando o raciocinio de engenharia",
+    "version": "0.8.0",
+    "purpose": "Aplicação web didática para apoio ao dimensionamento de circuitos elétricos conforme ABNT NBR 5410.",
+    "current_status": "Fase 08 em andamento (Refatoração e Circuitos)",
+    "last_update": "2024-02-02",
     "target_audience": [
       "engenharia civil",
       "engenharia de energia",
@@ -19,6 +21,28 @@
       "norma como regra explicita e auditavel",
       "usuario descreve a realidade, sistema traduz para a norma",
       "rastreabilidade total das decisoes"
+    ],
+    "history": [
+      {
+        "date": "2026-01-XX",
+        "event": "Início do desenvolvimento (Fases 01-06)",
+        "details": "Configuração do ambiente, Backend FastAPI, Estrutura inicial."
+      },
+      {
+        "date": "2026-02-01",
+        "event": "Migração de UI e Modelagem Core (Fase 07)",
+        "details": "Substituição total do Material UI pelo shadcn/ui + Tailwind CSS v3. Implementação estrita das entidades Zona, Local e Carga. Criação dos Wizards NBR 5410."
+      },
+      {
+        "date": "2026-02-02",
+        "event": "Problemas Enfrentados e Soluções (Documentation)",
+        "details": [
+          "PROBLEMA: Incompatibilidade entre Vite e Tailwind v4. SOLUÇÃO: Downgrade para Tailwind v3.4 e configuração manual do PostCSS.",
+          "PROBLEMA: Arquivo ProjectDetails.tsx tornou-se um 'God Object' (monolítico). SOLUÇÃO: Planejamento de refatoração modular para a Fase 08.",
+          "PROBLEMA: Definição de Zona incompleta (faltava Categoria C - Construção). SOLUÇÃO: Atualização dos Types e UI para conformidade total com NBR 5410.",
+          "PROBLEMA: Visual quebrado por CSS residual do Vite. SOLUÇÃO: Limpeza do App.css e reset global no index.css."
+        ]
+      }
     ]
   },
   "technology_stack": {
@@ -26,7 +50,7 @@
       "framework": "React",
       "language": "TypeScript (Strict Mode / VerbatimModuleSyntax)",
       "bundler": "Vite (Composite Mode)",
-      "ui_library": "Material UI (MUI) v6",
+      "ui_library": "Change from Material UI (MUI) v6 to shadcn/ui + Tailwind CSS v3.4 in phase 07",
       "state_management": "Zustand + Persist Middleware (LocalStorage)"
     },
     "backend": {
@@ -163,37 +187,43 @@
     },
     {
       "phase": "07",
-      "name": "Gerenciamento de Cargas e Pontos",
-      "objective": "Definir cargas (Iluminacao, TUGs, TUEs) dentro dos locais",
+      "name": "Modelagem de Cargas e Migração UI",
+      "objective": "Implementar hierarquia Zona > Local > Carga e modernizar interface",
       "features": [
-        "CRUD de Cargas por Local",
-        "Sugestao Normativa (Previsao de Cargas NBR 5410 item 9.5.2)",
-        "Calculo automatico de potencia instalada (VA/W)"
+        "Migração completa para shadcn/ui + TailwindCSS",
+        "CRUD de Zonas com classificação NBR 5410 (Ambiente, Pessoas, Construção)",
+        "CRUD de Locais com Perfil Normativo (Cozinha, Banheiro, Padrão)",
+        "CRUD de Cargas com distinção de origem (Usuário vs Norma)",
+        "Wizard de Sugestão Automática de Cargas (NBR 5410 Cap. 9)"
       ],
-      "deliverable": "Locais povoados com pontos eletricos",
-      "status": "pendente"
+      "deliverable": "Interface moderna e dados estruturados prontos para agrupamento",
+      "status": "concluido"
     },
     {
       "phase": "08",
-      "name": "Modelagem de Circuitos",
-      "objective": "Agrupar cargas em circuitos e definir protecao base",
+      "name": "Refatoração Modular e Circuitos",
+      "objective": "Dividir o monolito de UI e implementar a lógica de agrupamento de circuitos",
+      "branch_suggested": "feat/phase-08-circuits-refactor",
       "features": [
-        "Criacao de Circuitos",
-        "Agrupamento de Cargas por Zona/Local",
-        "Validacao de limites normativos de agrupamento"
+        "8.1 REFATORAÇÃO: Quebrar ProjectDetails.tsx em componentes (ZoneTab, LocalTab, CargaTab)",
+        "8.2 PROJETO: Implementar Edição e Deleção de Projetos (CRUD Completo)",
+        "8.3 ZONAS: Implementar Wizard Assistido (Perguntas e Respostas) e Presets conforme ux_presets_zonas.md",
+        "8.4 CARGAS: Implementar Adição em Lote (Grid/Planilha) para alta produtividade",
+        "8.5 CIRCUITOS: Implementar entidade 'Proposta de Circuito'",
+        "8.6 CIRCUITOS: UI de Drag-and-Drop para agrupar cargas em circuitos"
       ],
-      "deliverable": "Circuitos definidos prontos para calculo",
-      "status": "pendente"
+      "deliverable": "Módulo de criação de circuitos funcional e código limpo",
+      "status": "em_andamento"
     },
     {
       "phase": "09",
-      "name": "Motor de calculo normativo",
-      "objective": "Implementar a inteligencia de engenharia",
-      "calculations": [
-        "Ib: Corrente de projeto",
-        "Iz: Capacidade de conducao corrigida (FCT * FCA)",
-        "Queda de tensao (V%)",
-        "Selecao de Disjuntor (Ib <= In <= Iz)"
+      "name": "Motor de Dimensionamento",
+      "objective": "Cálculo de condutores e proteções",
+      "features": [
+        "Aplicação de Fatores de Agrupamento e Temperatura (FCT, FCA)",
+        "Seleção de método de instalação (Ref. NBR 5410)",
+        "Cálculo de corrente de projeto (IB) e disjuntor (IN)",
+        "Verificação de Queda de Tensão (%)"
       ],
       "output_schema": {
         "ResultadoDimensionamento": {
@@ -203,7 +233,7 @@
           "memoria_calculo": "string[]"
         }
       },
-      "deliverable": "Endpoint de calculo retornando resultados corretos",
+      "deliverable": "Endpoint de calculo retornando resultados corretos + Memorial de cálculo automatizado",
       "status": "pendente"
     },
     {
