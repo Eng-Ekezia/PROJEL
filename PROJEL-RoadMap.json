@@ -201,43 +201,119 @@
     },
     {
       "phase": "08",
-      "name": "Refatoração Modular e Circuitos",
-      "objective": "Dividir o monolito de UI e implementar a lógica de agrupamento de circuitos",
+      "name": "Refatoração Modular e Gestão de Circuitos",
+      "objective": "Modularizar a UI, implementar CRUD de Projetos e Gestão de Circuitos com Drag-and-Drop",
       "branch_suggested": "feat/phase-08-circuits-refactor",
       "features": [
-        "8.1 REFATORAÇÃO: Quebrar ProjectDetails.tsx em componentes (ZoneTab, LocalTab, CargaTab)",
-        "8.2 PROJETO: Implementar Edição e Deleção de Projetos (CRUD Completo)",
-        "8.3 ZONAS: Implementar Wizard Assistido (Perguntas e Respostas) e Presets conforme ux_presets_zonas.md",
-        "8.4 CARGAS: Implementar Adição em Lote (Grid/Planilha) para alta produtividade",
-        "8.5 CIRCUITOS: Implementar entidade 'Proposta de Circuito'",
-        "8.6 CIRCUITOS: UI de Drag-and-Drop para agrupar cargas em circuitos"
+        "8.1 [FEITO] REFATORAÇÃO: Quebrar ProjectDetails.tsx em componentes isolados (ZoneTab, LocalTab, CargaTab, CircuitosTab)",
+        "8.2 [FEITO] PROJETO: Implementar Edição e Deleção de Projetos com Dialogs Shadcn e proteção de clique (stopPropagation)",
+        "8.3 [ADIADO] ZONAS: Wizard Assistido (Movido para Fase 11 - UX Polish)",
+        "8.4 [ADIADO] CARGAS: Adição em Lote (Movido para Fase 11 - UX Polish)",
+        "8.5 [FEITO] CIRCUITOS: Entidade 'Circuito' no Backend (Single Source of Truth) com Enums da NBR 5410",
+        "8.6 [FEITO] CIRCUITOS: UI de Drag-and-Drop (@dnd-kit) para agrupar cargas, com Soft Validation (Avisos normativos)"
       ],
-      "deliverable": "Módulo de criação de circuitos funcional e código limpo",
-      "status": "em_andamento"
+      "deliverable": "Módulo de circuitos funcional, código desacoplado e arquitetura pronta para escalabilidade.",
+      "status": "concluido"
     },
     {
       "phase": "09",
-      "name": "Motor de Dimensionamento",
-      "objective": "Cálculo de condutores e proteções",
+      "name": "Reestruturação de Navegação (Sidebar Layout)",
+      "objective": "Migrar de Abas para Navegação Lateral (Nested Routes) para suportar tabelas complexas de dimensionamento",
+      "branch_suggested": "feat/phase-09-sidebar-navigation",
       "features": [
-        "Aplicação de Fatores de Agrupamento e Temperatura (FCT, FCA)",
-        "Seleção de método de instalação (Ref. NBR 5410)",
-        "Cálculo de corrente de projeto (IB) e disjuntor (IN)",
-        "Verificação de Queda de Tensão (%)"
+        "9.1 ROTAS: Configurar React Router com Nested Routes",
+        "9.2 LAYOUT: Implementar AppSidebar e Breadcrumbs",
+        "9.3 MIGRAÇÃO: Transformar Tabs em Páginas Individuais",
+        "9.4 ESTADO: Persistência de Contexto de Projeto"
       ],
-      "output_schema": {
-        "ResultadoDimensionamento": {
-          "corrente_projeto": "number",
-          "secao_condutor_mm2": "number",
-          "dispositivo_protecao": "string",
-          "memoria_calculo": "string[]"
+      "tasks_detailed": [
+        {
+          "id": "9.1.1",
+          "title": "Configuração de Rotas Filhas",
+          "description": "Criar rotas '/project/:id/zonas', '/project/:id/locais', '/project/:id/cargas', '/project/:id/circuitos' no router principal."
+        },
+        {
+          "id": "9.2.1",
+          "title": "Componente AppSidebar",
+          "description": "Criar sidebar colapsável usando Shadcn Sidebar, contendo menu de navegação do projeto atual e botão de voltar ao Dashboard."
+        },
+        {
+          "id": "9.2.2",
+          "title": "ProjectLayout Wrapper",
+          "description": "Criar um Layout específico que busca o projeto pelo ID da URL e injeta no Contexto/Store, prevenindo 'prop drilling'."
+        },
+        {
+          "id": "9.3.1",
+          "title": "Refatorar Tabs para Pages",
+          "description": "Converter 'ZoneTab.tsx' em 'pages/project/ZonesPage.tsx' (e similares), removendo a dependência do componente Tabs."
         }
-      },
-      "deliverable": "Endpoint de calculo retornando resultados corretos + Memorial de cálculo automatizado",
+      ],
+      "deliverable": "Layout profissional com Sidebar, liberando espaço vertical e permitindo links diretos para seções do projeto.",
       "status": "pendente"
     },
     {
       "phase": "10",
+      "name": "Motor de Dimensionamento (Cálculo NBR 5410)",
+      "objective": "Implementar a inteligência matemática para dimensionar condutores e proteções",
+      "branch_suggested": "feat/phase-10-calculation-engine",
+      "features": [
+        "10.1 BACKEND: Cálculos de Corrente (IB, IN, IZ)",
+        "10.2 BACKEND: Tabelas de Capacidade de Corrente (Tabelas 36-39)",
+        "10.3 BACKEND: Verificação de Queda de Tensão",
+        "10.4 FRONTEND: Interface de Resultados"
+      ],
+      "tasks_detailed": [
+        {
+          "id": "10.1.1",
+          "title": "Cálculo de IB (Corrente de Projeto)",
+          "description": "Implementar função: IB = (Potencia / Tensão) / (FatorAgrupamento * FatorTemperatura)."
+        },
+        {
+          "id": "10.2.1",
+          "title": "Digitalização de Tabelas NBR",
+          "description": "Criar repositório JSON/Python com as tabelas de capacidade de condução (Ref. NBR 5410 Tabela 36 a 39) baseadas no Método de Instalação."
+        },
+        {
+          "id": "10.2.2",
+          "title": "Algoritmo de Seleção de Condutor",
+          "description": "Loop que itera sobre seções comerciais (1.5, 2.5, 4.0...) até encontrar IZ > IN > IB."
+        },
+        {
+          "id": "10.3.1",
+          "title": "Cálculo de Queda de Tensão (ΔV%)",
+          "description": "Implementar fórmula: ΔV = (Resistividade * Comprimento * Corrente) / Seção. Alertar se > 4%."
+        },
+        {
+          "id": "10.4.1",
+          "title": "Endpoint de Dimensionamento",
+          "description": "POST /api/v1/calculos/dimensionar/{circuito_id} -> Retorna JSON com seção, disjuntor e memória de cálculo."
+        },
+        {
+          "id": "10.4.2",
+          "title": "UI de Resultados",
+          "description": "Criar modal ou painel lateral que exibe o resultado do cálculo e destaca erros (ex: 'Condutor muito fino para a distância')."
+        }
+      ],
+      "output_schema": {
+        "ResultadoDimensionamento": {
+          "corrente_projeto_ib": "number",
+          "corrente_corrigida_iz": "number",
+          "disjuntor_sugerido_in": "number",
+          "secao_condutor_mm2": "number",
+          "queda_tensao_percentual": "number",
+          "status": "'aprovado' | 'erro_queda_tensao' | 'erro_capacidade'",
+          "memoria_calculo": [
+            "Passo 1: IB = ...",
+            "Passo 2: Fatores FCT=... FCA=...",
+            "Passo 3: Tabela 36 coluna B1 selecionada..."
+          ]
+        }
+      },
+      "deliverable": "Sistema capaz de dimensionar circuitos automaticamente com justificativa normativa detalhada.",
+      "status": "pendente"
+    },
+    {
+      "phase": "10 advanced",
       "name": "Modulo de demanda",
       "objective": "Calculo independente por concessionaria",
       "initial_provider": "CEMIG (ND-5.1)",

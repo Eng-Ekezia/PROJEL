@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Settings } from "lucide-react" // Adicionado Settings
 import { toast } from "sonner"
 import { DndContext, type DragEndEvent, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
 
@@ -22,10 +22,11 @@ import { ZoneDialog } from "@/components/project/dialogs/ZoneDialog"
 import { LocalDialog, type LocalComPerfil } from "@/components/project/dialogs/LocalDialog"
 import { CargaDialog } from "@/components/project/dialogs/CargaDialog"
 import { CircuitDialog } from "@/components/project/dialogs/CircuitDialog"
+import { EditProjectDialog } from "@/components/project/dialogs/EditProjectDialog" // NOVO
 
 // Store & Types
 import { useProjectStore } from "../store/useProjectStore"
-import type { Zona, Local, Carga, Circuito } from "../types/project"
+import type { Zona, Local, Carga, Circuito, Projeto } from "../types/project"
 
 export default function ProjectDetails() {
   const { id } = useParams<{ id: string }>()
@@ -33,6 +34,7 @@ export default function ProjectDetails() {
   
   const { 
     projects, 
+    updateProject, // NOVO: Action para atualizar o projeto
     addZonaToProject, updateZonaInProject, removeZonaFromProject,
     addLocalToProject, updateLocalInProject, removeLocalFromProject,
     addCargaToProject, removeCargaFromProject,
@@ -57,19 +59,47 @@ export default function ProjectDetails() {
   const [isCargaDialogOpen, setIsCargaDialogOpen] = useState(false)
   const [cargaFormData, setCargaFormData] = useState<Partial<Carga>>({})
 
-  // Estado para Circuitos
   const [isCircuitoDialogOpen, setIsCircuitoDialogOpen] = useState(false)
   const [editingCircuito, setEditingCircuito] = useState<Circuito | null>(null)
   const [circuitoFormData, setCircuitoFormData] = useState<Partial<Circuito>>({})
 
-  // Sensores para o DnD (Melhora a UX do clique vs arraste)
+  // NOVO: Estado para Edição do Projeto
+  const [isEditProjectOpen, setIsEditProjectOpen] = useState(false)
+  const [projectFormData, setProjectFormData] = useState<Partial<Projeto>>({})
+
+  // Sensores para o DnD
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8, // Só ativa o drag se mover 8px (permite clicar no checkbox sem arrastar)
+        distance: 8, 
       },
     })
   );
+
+  // --- HANDLERS: PROJETO (NOVO) ---
+  const handleEditProject = () => {
+    if (project) {
+        setProjectFormData({ ...project })
+        setIsEditProjectOpen(true)
+    }
+  }
+
+  const handleSaveProject = () => {
+    if (!project || !projectFormData.nome) {
+        toast.error("Nome do projeto é obrigatório")
+        return
+    }
+
+    const updatedProject = {
+        ...project, 
+        ...projectFormData, 
+        ultima_modificacao: new Date().toISOString()
+    } as Projeto
+
+    updateProject(updatedProject)
+    setIsEditProjectOpen(false)
+    toast.success("Projeto atualizado com sucesso")
+  }
 
   // --- HANDLERS: ZONA ---
   const handleOpenZoneDialog = (zona?: Zona) => {
@@ -234,7 +264,7 @@ export default function ProjectDetails() {
         setCircuitoFormData(circuito)
     } else {
         setEditingCircuito(null)
-        setCircuitoFormData({ projeto_id: project?.id }) // IDs gerados no save
+        setCircuitoFormData({ projeto_id: project?.id })
     }
     setIsCircuitoDialogOpen(true)
   }
@@ -245,23 +275,20 @@ export default function ProjectDetails() {
         return
     }
 
-    // Validação de Zona Obrigatória (Regra de Negócio: entidade_circuito.md)
     if (!circuitoFormData.zona_id) {
         toast.error("ERRO NORMATIVO: O Circuito deve pertencer a uma Zona de Influência.")
         return
     }
     
-    // Tratamento seguro dos Enums com fallback e conversão numérica
     const payload = {
         ...circuitoFormData,
         id: editingCircuito?.id || crypto.randomUUID(),
         projeto_id: project.id,
-        // Garante que campos numéricos sejam Number
         tensao_nominal: Number(circuitoFormData.tensao_nominal),
         circuitos_agrupados: Number(circuitoFormData.circuitos_agrupados),
         data_criacao: editingCircuito?.data_criacao || new Date().toISOString(),
         status: 'rascunho',
-        cargas_ids: [] // Gerenciado via filtro (Source of Truth no ID da Carga)
+        cargas_ids: []
     } as Circuito
 
     if (editingCircuito) {
@@ -295,7 +322,6 @@ export default function ProjectDetails() {
     toast.info("Carga removida do circuito")
   }
 
-  // Handler do Drag-and-Drop
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
@@ -303,10 +329,8 @@ export default function ProjectDetails() {
       const cargaId = active.id as string;
       const circuitoId = over.id as string;
       
-      // Chama a store para associar
       if (project) {
         setCargaCircuit(project.id, cargaId, circuitoId);
-        toast.success("Carga movida com sucesso!");
       }
     }
   };
@@ -321,7 +345,15 @@ export default function ProjectDetails() {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">{project.nome}</h1>
+          <div className="flex items-center gap-2">
+             <h1 className="text-2xl font-bold tracking-tight">{project.nome}</h1>
+             
+             {/* BOTÃO DE EDITAR NOVO */}
+             <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={handleEditProject}>
+                <Settings className="h-4 w-4" />
+             </Button>
+          </div>
+          
           <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
             <Badge variant="outline">{project.tipo_instalacao}</Badge>
             <Separator orientation="vertical" className="h-4" />
@@ -408,6 +440,15 @@ export default function ProjectDetails() {
         open={isCircuitoDialogOpen} onOpenChange={setIsCircuitoDialogOpen}
         data={circuitoFormData} setData={setCircuitoFormData} onSave={handleSaveCircuito}
         zonas={project.zonas} isEditing={!!editingCircuito}
+      />
+
+      {/* DIALOG DE EDIÇÃO DE PROJETO (NOVO) */}
+      <EditProjectDialog 
+         open={isEditProjectOpen} 
+         onOpenChange={setIsEditProjectOpen}
+         data={projectFormData}
+         setData={setProjectFormData}
+         onSave={handleSaveProject}
       />
     </div>
   )
