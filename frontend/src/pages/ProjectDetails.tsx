@@ -1,56 +1,31 @@
 import { useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
-import { 
-  ArrowLeft, Plus, Settings, Trash2, 
-  Thermometer, Droplets, HardHat, 
-  Ruler, Maximize, Home, Utensils, Bath, Waves, 
-  Wind, BrickWall, Building, Zap, Lightbulb, Plug
-} from "lucide-react"
+import { ArrowLeft } from "lucide-react"
+import { toast } from "sonner"
+import { DndContext, type DragEndEvent, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
 
 import { NBR5410_WIZARD } from "../data/nbr5410_wizard"
 
-// Shadcn UI Components
+// UI Components
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import { Separator } from "@/components/ui/separator"
-import { toast } from "sonner"
+
+// Sub-components (Refatoração Fase 08)
+import { ZoneTab } from "@/components/project/tabs/ZoneTab"
+import { LocalTab } from "@/components/project/tabs/LocalTab"
+import { CargaTab } from "@/components/project/tabs/CargaTab"
+import { CircuitosTab } from "@/components/project/tabs/CircuitosTab"
+
+import { ZoneDialog } from "@/components/project/dialogs/ZoneDialog"
+import { LocalDialog, type LocalComPerfil } from "@/components/project/dialogs/LocalDialog"
+import { CargaDialog } from "@/components/project/dialogs/CargaDialog"
+import { CircuitDialog } from "@/components/project/dialogs/CircuitDialog"
 
 // Store & Types
 import { useProjectStore } from "../store/useProjectStore"
-import type { Zona, Local, Carga } from "../types/project"
-
-// Extensões de tipo para UI
-interface LocalComPerfil extends Local {
-  tipo: 'padrao' | 'cozinha' | 'banheiro' | 'servico' | 'externo'; 
-}
+import type { Zona, Local, Carga, Circuito } from "../types/project"
 
 export default function ProjectDetails() {
   const { id } = useParams<{ id: string }>()
@@ -60,7 +35,9 @@ export default function ProjectDetails() {
     projects, 
     addZonaToProject, updateZonaInProject, removeZonaFromProject,
     addLocalToProject, updateLocalInProject, removeLocalFromProject,
-    addCargaToProject, removeCargaFromProject 
+    addCargaToProject, removeCargaFromProject,
+    // Actions de Circuito
+    addCircuitoToProject, updateCircuitoInProject, removeCircuitoFromProject, setCargaCircuit
   } = useProjectStore()
   
   const project = projects.find((p) => p.id === id)
@@ -77,9 +54,22 @@ export default function ProjectDetails() {
   const [editingLocal, setEditingLocal] = useState<LocalComPerfil | null>(null)
   const [localFormData, setLocalFormData] = useState<Partial<LocalComPerfil>>({})
 
-  // Carga Manual State (Novo)
   const [isCargaDialogOpen, setIsCargaDialogOpen] = useState(false)
   const [cargaFormData, setCargaFormData] = useState<Partial<Carga>>({})
+
+  // Estado para Circuitos
+  const [isCircuitoDialogOpen, setIsCircuitoDialogOpen] = useState(false)
+  const [editingCircuito, setEditingCircuito] = useState<Circuito | null>(null)
+  const [circuitoFormData, setCircuitoFormData] = useState<Partial<Circuito>>({})
+
+  // Sensores para o DnD (Melhora a UX do clique vs arraste)
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // Só ativa o drag se mover 8px (permite clicar no checkbox sem arrastar)
+      },
+    })
+  );
 
   // --- HANDLERS: ZONA ---
   const handleOpenZoneDialog = (zona?: Zona) => {
@@ -134,11 +124,10 @@ export default function ProjectDetails() {
   }
 
   // --- HANDLERS: LOCAL ---
-  const handleOpenLocalDialog = (local?: Local) => {
+  const handleOpenLocalDialog = (local?: LocalComPerfil) => {
     if (local) {
-      const localTyped = local as LocalComPerfil
-      setEditingLocal(localTyped)
-      setLocalFormData(localTyped)
+      setEditingLocal(local)
+      setLocalFormData(local)
     } else {
       setEditingLocal(null)
       setLocalFormData({
@@ -182,23 +171,18 @@ export default function ProjectDetails() {
     }
   }
 
-  // --- HANDLERS: CARGA (NOVO) ---
+  // --- HANDLERS: CARGA ---
   const handleOpenCargaDialog = () => {
     setCargaFormData({
-      nome: "",
-      local_id: project?.locais[0]?.id || "",
-      tipo: "TUG",
-      potencia: 100,
-      unidade: "VA",
-      fator_potencia: 0.8,
-      origem: "usuario"
+      nome: "", local_id: project?.locais[0]?.id || "",
+      tipo: "TUG", potencia: 100, unidade: "VA",
+      fator_potencia: 0.8, origem: "usuario"
     })
     setIsCargaDialogOpen(true)
   }
 
   const handleSaveCarga = () => {
     if (!project || !cargaFormData.nome || !cargaFormData.local_id) return
-    
     const payload: Carga = {
       id: crypto.randomUUID(),
       projeto_id: project.id,
@@ -210,7 +194,6 @@ export default function ProjectDetails() {
       fator_potencia: Number(cargaFormData.fator_potencia),
       origem: "usuario"
     }
-
     addCargaToProject(project.id, payload)
     toast.success("Carga adicionada manualmente")
     setIsCargaDialogOpen(false)
@@ -223,47 +206,110 @@ export default function ProjectDetails() {
   }
 
   const handleAutoCargas = () => {
-        if (!project) return;
+    if (!project) return
+    const confirmacao = confirm(`Gerar automaticamente a previsão de cargas para ${project.locais.length} locais conforme NBR 5410?`)
+    if (!confirmacao) return
 
-        const confirmacao = confirm(
-            `Deseja gerar automaticamente a previsão de cargas para todos os ${project.locais.length} locais conforme NBR 5410?\n\nIsso adicionará TUGs baseadas no perímetro e tipo de cômodo.`
-        );
+    let contagem = 0
+    project.locais.forEach(local => {
+        const potIlum = NBR5410_WIZARD.calcularIluminacao(local.area_m2)
+        const cargaIlum: Carga = {
+          id: crypto.randomUUID(), projeto_id: project.id, local_id: local.id,
+          nome: "Iluminação Central", tipo: "Iluminacao", potencia: potIlum,
+          unidade: 'VA', fator_potencia: 1.0, origem: 'norma'
+        }
+        addCargaToProject(project.id, cargaIlum)
+        contagem++
+        
+        const tugs = NBR5410_WIZARD.calcularTUGs(local)
+        tugs.forEach(tug => { addCargaToProject(project.id, tug); contagem++ })
+    })
+    toast.success(`${contagem} cargas sugeridas pela norma foram adicionadas!`)
+  }
 
-        if (!confirmacao) return;
+  // --- HANDLERS: CIRCUITO ---
+  const handleOpenCircuitoDialog = (circuito?: Circuito) => {
+    if (circuito) {
+        setEditingCircuito(circuito)
+        setCircuitoFormData(circuito)
+    } else {
+        setEditingCircuito(null)
+        setCircuitoFormData({ projeto_id: project?.id }) // IDs gerados no save
+    }
+    setIsCircuitoDialogOpen(true)
+  }
 
-        let contagem = 0;
+  const handleSaveCircuito = () => {
+    if (!project || !circuitoFormData.identificador) {
+        toast.error("Identificador é obrigatório (Ex: C1)")
+        return
+    }
 
-        project.locais.forEach(local => {
-            // 1. Gera Iluminação (Regra de Área)
-            const potIlum = NBR5410_WIZARD.calcularIluminacao(local.area_m2);
-            const cargaIlum: Carga = {
-            id: crypto.randomUUID(),
-            projeto_id: project.id,
-            local_id: local.id,
-            nome: "Iluminação Central",
-            tipo: "Iluminacao",
-            potencia: potIlum,
-            unidade: 'VA',
-            fator_potencia: 1.0,
-            origem: 'norma'
-            };
-            addCargaToProject(project.id, cargaIlum);
-            contagem++;
+    // Validação de Zona Obrigatória (Regra de Negócio: entidade_circuito.md)
+    if (!circuitoFormData.zona_id) {
+        toast.error("ERRO NORMATIVO: O Circuito deve pertencer a uma Zona de Influência.")
+        return
+    }
+    
+    // Tratamento seguro dos Enums com fallback e conversão numérica
+    const payload = {
+        ...circuitoFormData,
+        id: editingCircuito?.id || crypto.randomUUID(),
+        projeto_id: project.id,
+        // Garante que campos numéricos sejam Number
+        tensao_nominal: Number(circuitoFormData.tensao_nominal),
+        circuitos_agrupados: Number(circuitoFormData.circuitos_agrupados),
+        data_criacao: editingCircuito?.data_criacao || new Date().toISOString(),
+        status: 'rascunho',
+        cargas_ids: [] // Gerenciado via filtro (Source of Truth no ID da Carga)
+    } as Circuito
 
-            // 2. Gera TUGs (Regra de Perímetro/Perfil)
-            const tugs = NBR5410_WIZARD.calcularTUGs(local);
-            tugs.forEach(tug => {
-            addCargaToProject(project.id, tug);
-            contagem++;
-            });
-        });
+    if (editingCircuito) {
+        updateCircuitoInProject(project.id, payload)
+        toast.success("Circuito atualizado")
+    } else {
+        addCircuitoToProject(project.id, payload)
+        toast.success("Circuito criado")
+    }
+    setIsCircuitoDialogOpen(false)
+  }
 
-        toast.success(`${contagem} cargas sugeridas pela norma foram adicionadas!`);
-    };
+  const handleDeleteCircuito = (circuitoId: string) => {
+     if(!project) return
+     if(confirm("Excluir circuito? As cargas voltarão para a lista de 'Sem Circuito'.")){
+        removeCircuitoFromProject(project.id, circuitoId)
+        toast.success("Circuito removido")
+     }
+  }
 
-  // --- HELPERS ---
-  const getZonaInfo = (zonaId: string) => project?.zonas.find(z => z.id === zonaId)
-  const getLocalInfo = (localId: string) => project?.locais.find(l => l.id === localId)
+  const handleAssignCargas = (circuitoId: string, cargasIds: string[]) => {
+    if (!project) return
+    cargasIds.forEach(cargaId => {
+        setCargaCircuit(project.id, cargaId, circuitoId)
+    })
+  }
+
+  const handleUnassignCarga = (cargaId: string) => {
+    if (!project) return
+    setCargaCircuit(project.id, cargaId, null)
+    toast.info("Carga removida do circuito")
+  }
+
+  // Handler do Drag-and-Drop
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const cargaId = active.id as string;
+      const circuitoId = over.id as string;
+      
+      // Chama a store para associar
+      if (project) {
+        setCargaCircuit(project.id, cargaId, circuitoId);
+        toast.success("Carga movida com sucesso!");
+      }
+    }
+  };
 
   if (!project) return null
 
@@ -287,312 +333,82 @@ export default function ProjectDetails() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 lg:w-[400px]">
+        <TabsList className="grid w-full grid-cols-4 lg:w-[600px]">
           <TabsTrigger value="zonas">1. Ambientes</TabsTrigger>
           <TabsTrigger value="locais">2. Arquitetura</TabsTrigger>
           <TabsTrigger value="cargas">3. Cargas</TabsTrigger>
+          <TabsTrigger value="circuitos">4. Circuitos</TabsTrigger>
         </TabsList>
 
-        {/* --- ABA ZONAS --- */}
-        <TabsContent value="zonas" className="mt-6 space-y-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <h3 className="text-lg font-medium">Zonas de Influência</h3>
-              <p className="text-sm text-muted-foreground">Classificação completa das influências externas.</p>
-            </div>
-            <Button onClick={() => handleOpenZoneDialog()}><Plus className="mr-2 h-4 w-4" /> Nova Zona</Button>
-          </div>
-          
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-             {project.zonas.map((zona) => (
-                <Card key={zona.id} className="border-l-4" style={{ borderLeftColor: zona.cor_identificacao }}>
-                  <CardHeader className="pb-2">
-                    <div className="flex justify-between">
-                      <CardTitle className="text-base">{zona.nome}</CardTitle>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingZona(zona); setZonaFormData(zona); setIsZoneDialogOpen(true); }}>
-                         <Settings className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <CardDescription>{zona.descricao || "Sem descrição"}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="pb-2 text-xs">
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="flex items-center gap-1" title="Temperatura"><Thermometer className="h-3 w-3 text-muted-foreground" /> {zona.temp_ambiente}</div>
-                      <div className="flex items-center gap-1" title="Água"><Droplets className="h-3 w-3 text-muted-foreground" /> {zona.presenca_agua}</div>
-                      <div className="flex items-center gap-1" title="Sólidos"><Wind className="h-3 w-3 text-muted-foreground" /> {zona.presenca_solidos}</div>
-                      <div className="flex items-center gap-1" title="Pessoas"><HardHat className="h-3 w-3 text-muted-foreground" /> {zona.competencia_pessoas}</div>
-                      <div className="flex items-center gap-1" title="Materiais"><BrickWall className="h-3 w-3 text-muted-foreground" /> {zona.materiais_construcao}</div>
-                      <div className="flex items-center gap-1" title="Estrutura"><Building className="h-3 w-3 text-muted-foreground" /> {zona.estrutura_edificacao}</div>
-                    </div>
-                  </CardContent>
-                  <CardFooter className="pt-2 justify-end">
-                    <Button variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10" onClick={() => handleDeleteZona(zona.id)}><Trash2 className="h-4 w-4" /></Button>
-                  </CardFooter>
-                </Card>
-             ))}
-          </div>
+        <TabsContent value="zonas">
+          <ZoneTab 
+            zonas={project.zonas} 
+            onNew={() => handleOpenZoneDialog()} 
+            onEdit={handleOpenZoneDialog} 
+            onDelete={handleDeleteZona} 
+          />
         </TabsContent>
 
-        {/* --- ABA LOCAIS --- */}
-        <TabsContent value="locais" className="mt-6 space-y-4">
-           {/* (Mesmo código da Etapa B, mantido por brevidade e consistência) */}
-           <div className="flex justify-between items-center">
-            <div>
-              <h3 className="text-lg font-medium">Cômodos e Áreas</h3>
-              <p className="text-sm text-muted-foreground">Definição física e perfil normativo.</p>
-            </div>
-            <Button onClick={() => handleOpenLocalDialog()} disabled={project.zonas.length === 0}><Plus className="mr-2 h-4 w-4" /> Novo Cômodo</Button>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {project.locais.map((local) => {
-              const zona = getZonaInfo(local.zona_id)
-              return (
-                <Card key={local.id}>
-                  <CardHeader className="pb-2">
-                    <div className="flex justify-between">
-                      <div>
-                        <CardTitle className="text-base">{local.nome}</CardTitle>
-                        <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
-                           <span className="w-2 h-2 rounded-full" style={{ backgroundColor: zona?.cor_identificacao || '#ccc' }} />
-                           {zona?.nome}
-                        </div>
-                      </div>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingLocal(local as LocalComPerfil); setLocalFormData(local as LocalComPerfil); setIsLocalDialogOpen(true); }}><Settings className="h-4 w-4" /></Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pb-2">
-                     <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
-                        <div className="flex items-center gap-2"><Maximize className="h-3.5 w-3.5" /> {local.area_m2} m²</div>
-                        <div className="flex items-center gap-2"><Ruler className="h-3.5 w-3.5" /> {local.perimetro_m} m</div>
-                     </div>
-                  </CardContent>
-                  <CardFooter className="pt-2 justify-end">
-                    <Button variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10" onClick={() => handleDeleteLocal(local.id)}><Trash2 className="h-4 w-4" /></Button>
-                  </CardFooter>
-                </Card>
-              )
-            })}
-          </div>
+        <TabsContent value="locais">
+          <LocalTab 
+            locais={project.locais} 
+            zonas={project.zonas}
+            onNew={() => handleOpenLocalDialog()} 
+            onEdit={handleOpenLocalDialog} 
+            onDelete={handleDeleteLocal} 
+          />
         </TabsContent>
 
-        {/* --- ABA CARGAS (NOVA) --- */}
-        <TabsContent value="cargas" className="mt-6 space-y-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <h3 className="text-lg font-medium">Previsão de Cargas</h3>
-              <p className="text-sm text-muted-foreground">Cargas definidas manual ou normativamente.</p>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={handleAutoCargas} disabled={project.locais.length === 0}>
-                <Zap className="mr-2 h-4 w-4 text-yellow-500" />
-                Sugestão NBR 5410
-               </Button>
-              <Button onClick={handleOpenCargaDialog} disabled={project.locais.length === 0}>
-                <Plus className="mr-2 h-4 w-4" /> Adicionar Carga
-              </Button>
-            </div>
-          </div>
+        <TabsContent value="cargas">
+          <CargaTab 
+            cargas={project.cargas} 
+            locais={project.locais}
+            zonas={project.zonas}
+            onNew={handleOpenCargaDialog}
+            onAutoCargas={handleAutoCargas}
+            onDelete={handleDeleteCarga}
+          />
+        </TabsContent>
 
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Carga</TableHead>
-                  <TableHead>Local / Zona</TableHead>
-                  <TableHead>Potência</TableHead>
-                  <TableHead>Origem</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {project.cargas.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                      Nenhuma carga cadastrada. Use "Adicionar Carga" ou a Sugestão NBR.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  project.cargas.map((carga) => {
-                    const local = getLocalInfo(carga.local_id)
-                    const zona = local ? getZonaInfo(local.zona_id) : null
-                    return (
-                      <TableRow key={carga.id}>
-                        <TableCell className="font-medium">
-                          <div className="flex items-center gap-2">
-                            {carga.tipo === 'Iluminacao' ? <Lightbulb className="h-4 w-4 text-yellow-500" /> : <Plug className="h-4 w-4 text-blue-500" />}
-                            {carga.nome}
-                            <span className="text-xs text-muted-foreground border px-1 rounded">{carga.tipo}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-col">
-                            <span>{local?.nome || 'Local Inválido'}</span>
-                            <span className="text-xs text-muted-foreground" style={{ color: zona?.cor_identificacao }}>{zona?.nome}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="font-mono">{carga.potencia} {carga.unidade}</div>
-                          <div className="text-xs text-muted-foreground">FP: {carga.fator_potencia}</div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={carga.origem === 'norma' ? 'secondary' : 'outline'}>{carga.origem}</Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteCarga(carga.id)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </div>
+        <TabsContent value="circuitos">
+            <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+                <CircuitosTab 
+                    circuitos={project.circuitos || []}
+                    cargas={project.cargas}
+                    zonas={project.zonas}
+                    onNewCircuito={() => handleOpenCircuitoDialog()}
+                    onEditCircuito={handleOpenCircuitoDialog}
+                    onDeleteCircuito={handleDeleteCircuito}
+                    onAssignCargas={handleAssignCargas}
+                    onUnassignCarga={handleUnassignCarga}
+                />
+            </DndContext>
         </TabsContent>
       </Tabs>
 
-      {/* DIALOG ZONA (ATUALIZADO) */}
-      <Dialog open={isZoneDialogOpen} onOpenChange={setIsZoneDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader><DialogTitle>{editingZona ? "Editar Zona" : "Nova Zona"}</DialogTitle></DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label>Nome</Label>
-              <Input value={zonaFormData.nome} onChange={(e) => setZonaFormData({...zonaFormData, nome: e.target.value})} />
-            </div>
-            
-            <Separator className="my-2" />
-            <h4 className="text-sm font-medium">Influências Externas (NBR 5410)</h4>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label>Temperatura (AA)</Label>
-                <Select value={zonaFormData.temp_ambiente} onValueChange={(v) => setZonaFormData({...zonaFormData, temp_ambiente: v})}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="AA1">AA1 (25°C)</SelectItem><SelectItem value="AA2">AA2 (30°C)</SelectItem></SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label>Água (AD)</Label>
-                <Select value={zonaFormData.presenca_agua} onValueChange={(v) => setZonaFormData({...zonaFormData, presenca_agua: v})}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="AD1">AD1 (Seco)</SelectItem><SelectItem value="AD2">AD2 (Gotas)</SelectItem></SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label>Sólidos (AE)</Label>
-                <Select value={zonaFormData.presenca_solidos} onValueChange={(v) => setZonaFormData({...zonaFormData, presenca_solidos: v})}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="AE1">AE1 (Desprezível)</SelectItem><SelectItem value="AE2">AE2 (Pequenos)</SelectItem></SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label>Pessoas (BA)</Label>
-                <Select value={zonaFormData.competencia_pessoas} onValueChange={(v) => setZonaFormData({...zonaFormData, competencia_pessoas: v})}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="BA1">BA1 (Comuns)</SelectItem><SelectItem value="BA4">BA4 (Instruídas)</SelectItem></SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label>Materiais (CA)</Label>
-                <Select value={zonaFormData.materiais_construcao} onValueChange={(v) => setZonaFormData({...zonaFormData, materiais_construcao: v})}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="CA1">CA1 (Não Combustível)</SelectItem><SelectItem value="CA2">CA2 (Combustível)</SelectItem></SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label>Estrutura (CB)</Label>
-                <Select value={zonaFormData.estrutura_edificacao} onValueChange={(v) => setZonaFormData({...zonaFormData, estrutura_edificacao: v})}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="CB1">CB1 (Desprezível)</SelectItem><SelectItem value="CB2">CB2 (Móvel)</SelectItem></SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-          <DialogFooter><Button onClick={handleSaveZona}>Salvar</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* DIALOG LOCAL */}
-      <Dialog open={isLocalDialogOpen} onOpenChange={setIsLocalDialogOpen}>
-        <DialogContent>
-           <DialogHeader><DialogTitle>Editar Local</DialogTitle></DialogHeader>
-           <div className="grid gap-4 py-4">
-              <div className="grid gap-2"><Label>Nome</Label><Input value={localFormData.nome} onChange={(e) => setLocalFormData({...localFormData, nome: e.target.value})} /></div>
-              <div className="grid gap-2">
-                 <Label>Perfil Normativo</Label>
-                 <Select value={localFormData.tipo} onValueChange={(v:any) => setLocalFormData({...localFormData, tipo: v})}>
-                   <SelectTrigger><SelectValue /></SelectTrigger>
-                   <SelectContent>
-                     <SelectItem value="padrao">Padrão</SelectItem><SelectItem value="cozinha">Cozinha</SelectItem>
-                     <SelectItem value="banheiro">Banheiro</SelectItem><SelectItem value="servico">Serviço</SelectItem>
-                     <SelectItem value="externo">Externo</SelectItem>
-                   </SelectContent>
-                 </Select>
-              </div>
-              <div className="grid gap-2">
-                 <Label>Zona</Label>
-                 <Select value={localFormData.zona_id} onValueChange={(v) => setLocalFormData({...localFormData, zona_id: v})}>
-                   <SelectTrigger><SelectValue /></SelectTrigger>
-                   <SelectContent>{project.zonas.map(z => <SelectItem key={z.id} value={z.id}>{z.nome}</SelectItem>)}</SelectContent>
-                 </Select>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                 <div className="grid gap-2"><Label>Área (m²)</Label><Input type="number" value={localFormData.area_m2} onChange={(e) => setLocalFormData({...localFormData, area_m2: Number(e.target.value)})} /></div>
-                 <div className="grid gap-2"><Label>Perímetro (m)</Label><Input type="number" value={localFormData.perimetro_m} onChange={(e) => setLocalFormData({...localFormData, perimetro_m: Number(e.target.value)})} /></div>
-              </div>
-           </div>
-           <DialogFooter><Button onClick={handleSaveLocal}>Salvar</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* DIALOG CARGA MANUAL */}
-      <Dialog open={isCargaDialogOpen} onOpenChange={setIsCargaDialogOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Nova Carga Manual</DialogTitle></DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label>Nome da Carga</Label>
-              <Input placeholder="Ex: Ar Condicionado" value={cargaFormData.nome} onChange={(e) => setCargaFormData({...cargaFormData, nome: e.target.value})} />
-            </div>
-            <div className="grid gap-2">
-              <Label>Local</Label>
-              <Select value={cargaFormData.local_id} onValueChange={(v) => setCargaFormData({...cargaFormData, local_id: v})}>
-                <SelectTrigger><SelectValue placeholder="Selecione o local" /></SelectTrigger>
-                <SelectContent>
-                  {project.locais.map(l => <SelectItem key={l.id} value={l.id}>{l.nome}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-               <div className="grid gap-2">
-                  <Label>Tipo</Label>
-                  <Select value={cargaFormData.tipo} onValueChange={(v) => setCargaFormData({...cargaFormData, tipo: v})}>
-                     <SelectTrigger><SelectValue /></SelectTrigger>
-                     <SelectContent>
-                        <SelectItem value="TUG">TUG</SelectItem>
-                        <SelectItem value="TUE">TUE</SelectItem>
-                        <SelectItem value="Iluminacao">Iluminação</SelectItem>
-                        <SelectItem value="Motor">Motor</SelectItem>
-                     </SelectContent>
-                  </Select>
-               </div>
-               <div className="grid gap-2">
-                  <Label>Potência</Label>
-                  <div className="flex gap-2">
-                     <Input type="number" value={cargaFormData.potencia} onChange={(e) => setCargaFormData({...cargaFormData, potencia: Number(e.target.value)})} />
-                     <Select value={cargaFormData.unidade} onValueChange={(v:any) => setCargaFormData({...cargaFormData, unidade: v})}>
-                        <SelectTrigger className="w-[80px]"><SelectValue /></SelectTrigger>
-                        <SelectContent><SelectItem value="W">W</SelectItem><SelectItem value="VA">VA</SelectItem></SelectContent>
-                     </Select>
-                  </div>
-               </div>
-            </div>
-          </div>
-          <DialogFooter><Button onClick={handleSaveCarga}>Salvar Carga</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* DIALOGS */}
+      <ZoneDialog 
+        open={isZoneDialogOpen} onOpenChange={setIsZoneDialogOpen}
+        data={zonaFormData} setData={setZonaFormData} onSave={handleSaveZona}
+        isEditing={!!editingZona}
+      />
+      <LocalDialog
+        open={isLocalDialogOpen} onOpenChange={setIsLocalDialogOpen}
+        data={localFormData} setData={setLocalFormData} onSave={handleSaveLocal}
+        zonas={project.zonas} isEditing={!!editingLocal}
+      />
+      <CargaDialog
+        open={isCargaDialogOpen} onOpenChange={setIsCargaDialogOpen}
+        data={cargaFormData} setData={setCargaFormData} onSave={handleSaveCarga}
+        locais={project.locais}
+      />
+      
+      {/* DIALOG DE CIRCUITO */}
+      <CircuitDialog 
+        open={isCircuitoDialogOpen} onOpenChange={setIsCircuitoDialogOpen}
+        data={circuitoFormData} setData={setCircuitoFormData} onSave={handleSaveCircuito}
+        zonas={project.zonas} isEditing={!!editingCircuito}
+      />
     </div>
   )
 }

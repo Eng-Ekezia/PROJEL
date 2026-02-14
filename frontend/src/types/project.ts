@@ -1,3 +1,23 @@
+// --- ENUMS TÉCNICOS (NBR 5410) ---
+
+export type TipoCircuito = 
+  | 'ILUMINACAO' 
+  | 'TUG'     // Tomada de Uso Geral
+  | 'TUE'     // Tomada de Uso Específico
+  | 'DISTRIBUICAO' 
+  | 'MOTOR';
+
+export type MetodoInstalacao = 
+  | 'A1' | 'A2' | 'B1' | 'B2' | 'C' | 'D' | 'E' | 'F' | 'G';
+
+export type MaterialCondutor = 'COBRE' | 'ALUMINIO';
+
+export type Isolacao = 'PVC' | 'EPR' | 'XLPE';
+
+export type Criticidade = 'NORMAL' | 'ALTA'; // Ex: Equipamentos de suporte à vida ou alto custo
+
+// --- ENTIDADES ---
+
 export interface Zona {
   id: string;
   projeto_id: string;
@@ -11,10 +31,10 @@ export interface Zona {
   // Influencias NBR 5410
   temp_ambiente: string;      // AA
   presenca_agua: string;      // AD
-  presenca_solidos: string;   // AE (Novo)
+  presenca_solidos: string;   // AE
   competencia_pessoas: string;// BA
-  materiais_construcao: string; // CA (Novo)
-  estrutura_edificacao: string; // CB (Novo)
+  materiais_construcao: string; // CA
+  estrutura_edificacao: string; // CB
   
   cor_identificacao: string;
   data_criacao: string;
@@ -39,12 +59,50 @@ export interface Carga {
   projeto_id: string;
   local_id: string;
   nome: string;
-  tipo: string; // Ex: 'TUG', 'TUE', 'Iluminacao'
+  tipo: string; 
   potencia: number;
   unidade: 'W' | 'VA';
   fator_potencia: number;
-  origem: 'norma' | 'usuario'; // Importante para rastreabilidade
+  origem: 'norma' | 'usuario';
   status?: 'ativo' | 'inativo';
+  
+  // Relação com Circuito (Novo na Fase 08)
+  circuito_id?: string | null; // Carga pode ou não ter circuito ainda
+}
+
+export interface Circuito {
+  id: string;
+  projeto_id: string;
+  
+  // Identificação
+  identificador: string; // Ex: "C1", "C2"
+  tipo_circuito: TipoCircuito;
+  descricao?: string;
+  
+  // Relacionamentos
+  zona_id: string; // Zona dominante (a mais crítica)
+  cargas_ids: string[]; // IDs das cargas agrupadas
+  
+  // Parâmetros de Instalação (Decisão do Usuário)
+  metodo_instalacao: MetodoInstalacao;
+  sobrescreve_influencias: boolean; // Se true, usuário forçou parâmetros ignorando a Zona
+  
+  // Parâmetros Elétricos
+  tensao_nominal: number; // Ex: 127, 220
+  circuitos_agrupados: number; // Para cálculo de fator de agrupamento
+  fator_agrupamento?: number;
+  temperatura_ambiente?: number;
+  
+  // Condutores (Decisão ou Resultado)
+  material_condutor: MaterialCondutor;
+  isolacao: Isolacao;
+  secao_condutor_mm2?: number; // Resultado do dimensionamento
+  
+  // Proteção
+  corrente_nominal_disjuntor?: number; // Resultado
+  
+  data_criacao: string;
+  status: 'rascunho' | 'calculado' | 'erro';
 }
 
 export interface Projeto {
@@ -54,12 +112,14 @@ export interface Projeto {
   tensao_sistema: string;
   sistema: string;
   esquema_aterramento?: string;
+  descricao_aterramento?: string;
   data_criacao: string;
   ultima_modificacao: string;
   
   zonas: Zona[];
   locais: Local[];
   cargas: Carga[];
+  circuitos: Circuito[]; // Novo array de circuitos
 }
 
 export interface PresetZona {

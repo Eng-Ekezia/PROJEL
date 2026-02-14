@@ -7,7 +7,7 @@ from domain_core.schemas.zona import Zona, ZonaCreate
 from domain_core.enums.influencias import (
     TemperaturaAmbiente, PresencaAgua, PresencaSolidos, 
     CompetenciaPessoas, MateriaisConstrucao, EstruturaEdificacao,
-    DESCRICOES
+    DESCRICOES_INFLUENCIAS
 )
 
 router = APIRouter()
@@ -39,7 +39,7 @@ async def listar_presets(tipo_projeto: str):
 @router.get("/opcoes-influencias", response_model=Dict[str, List[Dict[str, str]]])
 async def listar_opcoes_influencias():
     def enum_to_list(enum_cls):
-        return [{"codigo": e.value, "descricao": DESCRICOES.get(e.value, e.value)} for e in enum_cls]
+        return [{"codigo": e.value, "descricao": DESCRICOES_INFLUENCIAS.get(e.value, e.value)} for e in enum_cls]
     return {
         "temperatura": enum_to_list(TemperaturaAmbiente),
         "agua": enum_to_list(PresencaAgua),

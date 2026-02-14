@@ -10,6 +10,10 @@ const Toaster = ({ ...props }: ToasterProps) => {
     <Sonner
       theme={theme as ToasterProps["theme"]}
       className="toaster group"
+      richColors // Adiciona cores semânticas (Verde=Success, Amarelo=Warning, Vermelho=Error)
+      expand={true} // Expande os toasts ao passar o mouse, evitando sobreposição ilegível
+      //closeButton // Adiciona botão de fechar (X)
+      visibleToasts={5} // Limita o número máximo na tela
       toastOptions={{
         classNames: {
           toast:
