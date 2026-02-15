@@ -1,10 +1,13 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import { BrowserRouter } from 'react-router-dom' // Importação necessária
+import './index.css'
 import App from './App.tsx'
-import './index.css' // OBRIGATÓRIO: O Tailwind vive aqui
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <BrowserRouter> {/* O Router deve envolver toda a aplicação */}
+      <App />
+    </BrowserRouter>
+  </StrictMode>,
 )

@@ -1,23 +1,39 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import AppLayout from '@/layouts/AppLayout';
+import { Routes, Route } from "react-router-dom";
+import AppLayout from "@/layouts/AppLayout";
+import Dashboard from "@/pages/Dashboard";
+import ProjectDetails from "@/pages/ProjectDetails";
+import ZonesPage from "@/pages/project/ZonesPage"; // Importação Nova
 
-// Pages
-import Dashboard from './pages/Dashboard';
-import ProjectDetails from './pages/ProjectDetails';
+// Componente temporário para as próximas etapas
+const TempPage = ({ title }: { title: string }) => (
+  <div className="flex flex-col gap-4 p-4">
+    <div className="rounded-lg border border-dashed p-8 text-center">
+      <h2 className="text-2xl font-bold tracking-tight">{title}</h2>
+      <p className="text-muted-foreground">Em construção...</p>
+    </div>
+  </div>
+);
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        {/* Rotas que ficam DENTRO do Layout com Sidebar */}
-        <Route element={<AppLayout />}>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/project/:id" element={<ProjectDetails />} />
+    <Routes>
+      <Route element={<AppLayout />}>
+        <Route path="/" element={<Dashboard />} />
+        
+        <Route path="/project/:id">
+          <Route index element={<ProjectDetails />} />
+          
+          {/* Rota Atualizada */}
+          <Route path="zonas" element={<ZonesPage />} />
+          
+          <Route path="locais" element={<TempPage title="Gerenciamento de Locais" />} />
+          <Route path="cargas" element={<TempPage title="Gerenciamento de Cargas" />} />
+          <Route path="circuitos" element={<TempPage title="Dimensionamento de Circuitos" />} />
         </Route>
 
-        {/* Rotas soltas (Ex: Login) ficariam fora do AppLayout */}
-      </Routes>
-    </Router>
+        <Route path="*" element={<div className="p-8">Página não encontrada</div>} />
+      </Route>
+    </Routes>
   );
 }
 
