@@ -2,7 +2,8 @@ import { Routes, Route } from "react-router-dom";
 import AppLayout from "@/layouts/AppLayout";
 import Dashboard from "@/pages/Dashboard";
 import ProjectDetails from "@/pages/ProjectDetails";
-import ZonesPage from "@/pages/project/ZonesPage"; // Importação Nova
+import ZonesPage from "@/pages/project/ZonesPage";
+import LocaisPage from "@/pages/project/LocaisPage"; // Importação Nova
 
 // Componente temporário para as próximas etapas
 const TempPage = ({ title }: { title: string }) => (
@@ -22,11 +23,11 @@ function App() {
         
         <Route path="/project/:id">
           <Route index element={<ProjectDetails />} />
-          
-          {/* Rota Atualizada */}
           <Route path="zonas" element={<ZonesPage />} />
           
-          <Route path="locais" element={<TempPage title="Gerenciamento de Locais" />} />
+          {/* Rota Atualizada */}
+          <Route path="locais" element={<LocaisPage />} />
+          
           <Route path="cargas" element={<TempPage title="Gerenciamento de Cargas" />} />
           <Route path="circuitos" element={<TempPage title="Dimensionamento de Circuitos" />} />
         </Route>
