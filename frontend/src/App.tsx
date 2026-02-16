@@ -1,11 +1,12 @@
 import { Routes, Route } from "react-router-dom";
 import AppLayout from "@/layouts/AppLayout";
 import Dashboard from "@/pages/Dashboard";
-import ProjectDetails from "@/pages/ProjectDetails";
+// REMOVIDO: import ProjectDetails from "@/pages/ProjectDetails";
+import OverviewPage from "@/pages/project/OverviewPage"; // NOVA PÁGINA
 import ZonesPage from "@/pages/project/ZonesPage";
 import LocaisPage from "@/pages/project/LocaisPage";
 import CargasPage from "@/pages/project/CargasPage";
-import CircuitosPage from "@/pages/project/CircuitosPage"; // Importação Final
+import CircuitosPage from "@/pages/project/CircuitosPage";
 
 function App() {
   return (
@@ -14,15 +15,12 @@ function App() {
         <Route path="/" element={<Dashboard />} />
         
         <Route path="/project/:id">
-          {/* A rota index ainda aponta para o antigo ProjectDetails (Overview) 
-              Fase 09 não exigiu refatorar o Dashboard interno, apenas a navegação */}
-          <Route index element={<ProjectDetails />} />
+          {/* Index agora aponta para o Dashboard do Projeto */}
+          <Route index element={<OverviewPage />} />
           
           <Route path="zonas" element={<ZonesPage />} />
           <Route path="locais" element={<LocaisPage />} />
           <Route path="cargas" element={<CargasPage />} />
-          
-          {/* Rota Finalizada */}
           <Route path="circuitos" element={<CircuitosPage />} />
         </Route>
 
