@@ -92,6 +92,7 @@ export interface Circuito {
   circuitos_agrupados: number; // Para cálculo de fator de agrupamento
   fator_agrupamento?: number;
   temperatura_ambiente?: number;
+  comprimento_m?: number; // Usar 'comprimento_m' para alinhar com o Backend (Python)
   
   // Condutores (Decisão ou Resultado)
   material_condutor: MaterialCondutor;

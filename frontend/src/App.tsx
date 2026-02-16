@@ -4,17 +4,8 @@ import Dashboard from "@/pages/Dashboard";
 import ProjectDetails from "@/pages/ProjectDetails";
 import ZonesPage from "@/pages/project/ZonesPage";
 import LocaisPage from "@/pages/project/LocaisPage";
-import CargasPage from "@/pages/project/CargasPage"; // Importação Nova
-
-// Componente temporário final
-const TempPage = ({ title }: { title: string }) => (
-  <div className="flex flex-col gap-4 p-4">
-    <div className="rounded-lg border border-dashed p-8 text-center">
-      <h2 className="text-2xl font-bold tracking-tight">{title}</h2>
-      <p className="text-muted-foreground">Em construção...</p>
-    </div>
-  </div>
-);
+import CargasPage from "@/pages/project/CargasPage";
+import CircuitosPage from "@/pages/project/CircuitosPage"; // Importação Final
 
 function App() {
   return (
@@ -23,14 +14,16 @@ function App() {
         <Route path="/" element={<Dashboard />} />
         
         <Route path="/project/:id">
+          {/* A rota index ainda aponta para o antigo ProjectDetails (Overview) 
+              Fase 09 não exigiu refatorar o Dashboard interno, apenas a navegação */}
           <Route index element={<ProjectDetails />} />
+          
           <Route path="zonas" element={<ZonesPage />} />
           <Route path="locais" element={<LocaisPage />} />
-          
-          {/* Rota Atualizada */}
           <Route path="cargas" element={<CargasPage />} />
           
-          <Route path="circuitos" element={<TempPage title="Dimensionamento de Circuitos" />} />
+          {/* Rota Finalizada */}
+          <Route path="circuitos" element={<CircuitosPage />} />
         </Route>
 
         <Route path="*" element={<div className="p-8">Página não encontrada</div>} />
