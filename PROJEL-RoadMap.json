@@ -2,8 +2,8 @@
   "project": {
     "version": "0.8.0",
     "purpose": "Aplicação web didática para apoio ao dimensionamento de circuitos elétricos conforme ABNT NBR 5410.",
-    "current_status": "Fase 08 em andamento (Refatoração e Circuitos)",
-    "last_update": "2024-02-02",
+    "current_status": "Fase 10 em andamento",
+    "last_update": "2024-02-16",
     "target_audience": [
       "engenharia civil",
       "engenharia de energia",
@@ -249,7 +249,7 @@
         }
       ],
       "deliverable": "Layout profissional com Sidebar, liberando espaço vertical e permitindo links diretos para seções do projeto.",
-      "status": "pendente"
+      "status": "concluido"
     },
     {
       "phase": "10",
@@ -257,6 +257,7 @@
       "objective": "Implementar a inteligência matemática para dimensionar condutores e proteções",
       "branch_suggested": "feat/phase-10-calculation-engine",
       "features": [
+        "10.0 Dever de casa: Analisar arquivo da NBR 5410, listar e extrair fórmulas, tabelas e regras para implementação",
         "10.1 BACKEND: Cálculos de Corrente (IB, IN, IZ)",
         "10.2 BACKEND: Tabelas de Capacidade de Corrente (Tabelas 36-39)",
         "10.3 BACKEND: Verificação de Queda de Tensão",
@@ -291,7 +292,7 @@
         {
           "id": "10.4.2",
           "title": "UI de Resultados",
-          "description": "Criar modal ou painel lateral que exibe o resultado do cálculo e destaca erros (ex: 'Condutor muito fino para a distância')."
+          "description": "Criar painel lateral que exibe o resultado do cálculo e destaca erros (ex: 'Condutor muito fino para a distância')."
         }
       ],
       "output_schema": {
