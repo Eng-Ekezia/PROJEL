@@ -3,9 +3,10 @@ import AppLayout from "@/layouts/AppLayout";
 import Dashboard from "@/pages/Dashboard";
 import ProjectDetails from "@/pages/ProjectDetails";
 import ZonesPage from "@/pages/project/ZonesPage";
-import LocaisPage from "@/pages/project/LocaisPage"; // Importação Nova
+import LocaisPage from "@/pages/project/LocaisPage";
+import CargasPage from "@/pages/project/CargasPage"; // Importação Nova
 
-// Componente temporário para as próximas etapas
+// Componente temporário final
 const TempPage = ({ title }: { title: string }) => (
   <div className="flex flex-col gap-4 p-4">
     <div className="rounded-lg border border-dashed p-8 text-center">
@@ -24,11 +25,11 @@ function App() {
         <Route path="/project/:id">
           <Route index element={<ProjectDetails />} />
           <Route path="zonas" element={<ZonesPage />} />
-          
-          {/* Rota Atualizada */}
           <Route path="locais" element={<LocaisPage />} />
           
-          <Route path="cargas" element={<TempPage title="Gerenciamento de Cargas" />} />
+          {/* Rota Atualizada */}
+          <Route path="cargas" element={<CargasPage />} />
+          
           <Route path="circuitos" element={<TempPage title="Dimensionamento de Circuitos" />} />
         </Route>
 
