@@ -15,6 +15,10 @@ class CargaBase(BaseModel):
     fator_potencia: float
     
     local_id: str
+    
+    # [NOVO] Contexto Explícito (Opcional p/ Migração Incremental)
+    projeto_id: Optional[str] = Field(default=None, description="ID do Projeto pai")
+    zona_id: Optional[str] = Field(default=None, description="ID da Zona herdada")
 
 class CargaCreate(BaseModel):
     """Modelo de entrada (Input Inteligente)"""
@@ -22,6 +26,11 @@ class CargaCreate(BaseModel):
     tipo: TipoCarga = Field(default=TipoCarga.TUG)
     quantidade: int = Field(default=1, gt=0)
     local_id: str
+    
+    # [NOVO] Contexto Explícito (Opcional p/ Migração Incremental)
+    # Na Fase 3, tornaremos obrigatório.
+    projeto_id: Optional[str] = Field(default=None, description="ID do Projeto pai")
+    zona_id: Optional[str] = Field(default=None, description="ID da Zona herdada")
     
     # Input flexível: Usuário informa um, o sistema calcula o outro
     potencia: float = Field(..., gt=0, description="Valor da potência")
