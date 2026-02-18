@@ -1,5 +1,8 @@
 // --- ENUMS TÉCNICOS (NBR 5410) ---
 
+// TODO: Refatorar Enums na Fase de UI para coincidir estritamente com o Backend (snake_case)
+// Backend espera: 'iluminacao' | 'tomadas_uso_geral' | 'tomadas_uso_especifico' ...
+// Por enquanto, mantemos o mapeamento visual, mas ciente da divergência apontada no Teste 2.
 export type TipoCircuito = 
   | 'ILUMINACAO' 
   | 'TUG'     // Tomada de Uso Geral
@@ -15,6 +18,10 @@ export type MaterialCondutor = 'COBRE' | 'ALUMINIO';
 export type Isolacao = 'PVC' | 'EPR' | 'XLPE';
 
 export type Criticidade = 'NORMAL' | 'ALTA'; // Ex: Equipamentos de suporte à vida ou alto custo
+
+export type StatusProposta = 'rascunho' | 'revisada' | 'aceita' | 'descartada';
+
+export type StatusDimensionamento = 'ok' | 'alerta' | 'erro';
 
 // --- ENTIDADES ---
 
@@ -66,8 +73,26 @@ export interface Carga {
   origem: 'norma' | 'usuario';
   status?: 'ativo' | 'inativo';
   
-  // Relação com Circuito (Novo na Fase 08)
-  circuito_id?: string | null; // Carga pode ou não ter circuito ainda
+  // [NOVO] Contexto Explícito (Fase 10 - Repair)
+  // Obrigatório no Backend, mas opcional aqui até refatorarmos a criação
+  zona_id?: string; 
+  
+  // Relação com Circuito (Legado/Compatibilidade)
+  circuito_id?: string | null; 
+}
+
+export interface PropostaCircuito {
+  id: string;
+  data_criacao: string;
+  status: StatusProposta;
+  
+  cargas_ids: string[];
+  locais_ids: string[];
+  zonas_ids: string[];
+  
+  descricao_intencao: string;
+  observacoes_normativas?: string;
+  autor: string;
 }
 
 export interface Circuito {
@@ -78,6 +103,9 @@ export interface Circuito {
   identificador: string; // Ex: "C1", "C2"
   tipo_circuito: TipoCircuito;
   descricao?: string;
+  
+  // [NOVO] Rastreabilidade da Proposta (Fase 10)
+  proposta_id?: string;
   
   // Relacionamentos
   zona_id: string; // Zona dominante (a mais crítica)
@@ -92,7 +120,7 @@ export interface Circuito {
   circuitos_agrupados: number; // Para cálculo de fator de agrupamento
   fator_agrupamento?: number;
   temperatura_ambiente?: number;
-  comprimento_m?: number; // Usar 'comprimento_m' para alinhar com o Backend (Python)
+  comprimento_m?: number; 
   
   // Condutores (Decisão ou Resultado)
   material_condutor: MaterialCondutor;
@@ -104,6 +132,36 @@ export interface Circuito {
   
   data_criacao: string;
   status: 'rascunho' | 'calculado' | 'erro';
+}
+
+// --- RESULTADOS DO MOTOR DE CÁLCULO (Fase 10) ---
+
+export interface VerificacaoNormativa {
+  criterio: string;
+  status: StatusDimensionamento;
+  valor_calculado: number | string;
+  limite_normativo?: number | string;
+  mensagem: string;
+  referencia_nbr: string;
+}
+
+export interface MemoriaCalculo {
+  passos: string[];
+}
+
+export interface ResultadoDimensionamento {
+  circuito_id?: string;
+  status_global: StatusDimensionamento;
+  
+  corrente_projeto_ib: number;
+  corrente_corrigida_iz?: number;
+  disjuntor_nominal_in?: number;
+  secao_condutor_mm2?: number;
+  queda_tensao_pct?: number;
+  
+  verificacoes: VerificacaoNormativa[];
+  memoria: MemoriaCalculo;
+  erros_entrada?: string[];
 }
 
 export interface Projeto {
@@ -120,7 +178,8 @@ export interface Projeto {
   zonas: Zona[];
   locais: Local[];
   cargas: Carga[];
-  circuitos: Circuito[]; // Novo array de circuitos
+  propostas?: PropostaCircuito[]; // [NOVO] Lista de propostas
+  circuitos: Circuito[]; 
 }
 
 export interface PresetZona {
