@@ -19,7 +19,13 @@ export type Isolacao = 'PVC' | 'EPR' | 'XLPE';
 
 export type Criticidade = 'NORMAL' | 'ALTA'; // Ex: Equipamentos de suporte à vida ou alto custo
 
-export type StatusProposta = 'rascunho' | 'revisada' | 'aceita' | 'descartada';
+// [MODIFICADO] Ciclo de vida da Proposta enriquecido para rastreabilidade real
+export type StatusProposta = 
+  | 'rascunho'   // Criada, mas não analisada
+  | 'analisada'  // Passou pela validação (frontend/backend) sem erros críticos
+  | 'invalida'   // Falhou na validação (ex: conflito grave)
+  | 'aceita'     // Virou Circuito definitivo
+  | 'descartada'; // Rejeitada pelo usuário
 
 export type StatusDimensionamento = 'ok' | 'alerta' | 'erro';
 
@@ -74,10 +80,10 @@ export interface Carga {
   status?: 'ativo' | 'inativo';
   
   // [NOVO] Contexto Explícito (Fase 10 - Repair)
-  // Obrigatório no Backend, mas opcional aqui até refatorarmos a criação
   zona_id?: string; 
   
   // Relação com Circuito (Legado/Compatibilidade)
+  // Nota: Deixará de ser manipulado diretamente pelo usuário, será derivado da Proposta
   circuito_id?: string | null; 
 }
 
@@ -104,10 +110,11 @@ export interface Circuito {
   tipo_circuito: TipoCircuito;
   descricao?: string;
   
-  // [NOVO] Rastreabilidade da Proposta (Fase 10)
-  proposta_id?: string;
+  // [MODIFICADO] Rastreabilidade Absoluta da Proposta
+  proposta_id: string; 
+  snapshot_proposta: PropostaCircuito; // Cópia imutável do rascunho que originou este circuito
   
-  // Relacionamentos
+  // Relacionamentos (Copiados da proposta no momento do "Batismo")
   zona_id: string; // Zona dominante (a mais crítica)
   cargas_ids: string[]; // IDs das cargas agrupadas
   
@@ -178,7 +185,7 @@ export interface Projeto {
   zonas: Zona[];
   locais: Local[];
   cargas: Carga[];
-  propostas?: PropostaCircuito[]; // [NOVO] Lista de propostas
+  propostas?: PropostaCircuito[]; 
   circuitos: Circuito[]; 
 }
 
