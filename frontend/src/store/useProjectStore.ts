@@ -27,7 +27,7 @@ interface ProjectState {
   updateCargaInProject: (projectId: string, carga: Carga) => void;
   removeCargaFromProject: (projectId: string, cargaId: string) => void;
 
-  // Circuito Actions (FASE 08)
+  // Circuito Actions
   addCircuitoToProject: (projectId: string, circuito: Circuito) => void;
   updateCircuitoInProject: (projectId: string, circuito: Circuito) => void;
   removeCircuitoFromProject: (projectId: string, circuitoId: string) => void;
@@ -41,7 +41,6 @@ export const useProjectStore = create<ProjectState>()(
     (set, get) => ({
       projects: [],
       
-      // --- PROJECT IMPLEMENTATION ---
       setProjects: (projects) => set({ projects }),
       
       addProject: (project) => set((state) => ({ 
@@ -56,7 +55,6 @@ export const useProjectStore = create<ProjectState>()(
           projects: state.projects.filter(p => p.id !== id) 
       })),
       
-      // --- ZONA IMPLEMENTATION ---
       addZonaToProject: (pId, zona) => set((state) => ({
         projects: state.projects.map(p => p.id === pId ? { ...p, zonas: [...p.zonas, zona] } : p)
       })),
@@ -69,7 +67,6 @@ export const useProjectStore = create<ProjectState>()(
         projects: state.projects.map(p => p.id === pId ? { ...p, zonas: p.zonas.filter(z => z.id !== zId) } : p)
       })),
 
-      // --- LOCAL IMPLEMENTATION ---
       addLocalToProject: (pId, local) => set((state) => ({
         projects: state.projects.map(p => p.id === pId ? { ...p, locais: [...p.locais, local] } : p)
       })),
@@ -82,27 +79,51 @@ export const useProjectStore = create<ProjectState>()(
         projects: state.projects.map(p => p.id === pId ? { ...p, locais: p.locais.filter(l => l.id !== lId) } : p)
       })),
 
-      // --- CARGA IMPLEMENTATION ---
-      addCargaToProject: (pId, carga) => set((state) => ({
-        projects: state.projects.map(p => p.id === pId ? { ...p, cargas: [...p.cargas, carga] } : p)
-      })),
-      updateCargaInProject: (pId, carga) => set((state) => ({
+      // --- CARGA IMPLEMENTATION (Refatorada Fase 10) ---
+      addCargaToProject: (pId, carga) => set((state) => {
+        const project = state.projects.find(p => p.id === pId);
+        if (!project) return state;
+
+        // Garantia de Integridade: Injeção de zona_id herdada
+        const finalCarga = { ...carga };
+        if (!finalCarga.zona_id) {
+            const local = project.locais.find(l => l.id === finalCarga.local_id);
+            if (local) finalCarga.zona_id = local.zona_id;
+        }
+
+        return {
+          projects: state.projects.map(p => p.id === pId ? { ...p, cargas: [...p.cargas, finalCarga] } : p)
+        };
+      }),
+
+      updateCargaInProject: (pId, carga) => set((state) => {
+        const project = state.projects.find(p => p.id === pId);
+        if (!project) return state;
+
+        // Garantia de Integridade: Injeção de zona_id herdada ao atualizar
+        const finalCarga = { ...carga };
+        if (!finalCarga.zona_id) {
+            const local = project.locais.find(l => l.id === finalCarga.local_id);
+            if (local) finalCarga.zona_id = local.zona_id;
+        }
+
+        return {
           projects: state.projects.map(p => p.id === pId ? {
-              ...p, cargas: p.cargas.map(c => c.id === carga.id ? carga : c)
+              ...p, cargas: p.cargas.map(c => c.id === finalCarga.id ? finalCarga : c)
           } : p)
-      })),
+        };
+      }),
+
       removeCargaFromProject: (pId, cId) => set((state) => ({
         projects: state.projects.map(p => p.id === pId ? { ...p, cargas: p.cargas.filter(c => c.id !== cId) } : p)
       })),
 
-      // --- CIRCUITO IMPLEMENTATION (FASE 08) ---
+      // --- CIRCUITO IMPLEMENTATION ---
       addCircuitoToProject: (pId, circuito) => {
         const state = get();
         const project = state.projects.find(p => p.id === pId);
-        
         if (!project) return;
 
-        // VALIDAÇÃO 1: Identificador Único
         const duplicado = project.circuitos?.some(c => 
             c.identificador.trim().toUpperCase() === circuito.identificador.trim().toUpperCase()
         );
@@ -114,8 +135,7 @@ export const useProjectStore = create<ProjectState>()(
 
         set((state) => ({
             projects: state.projects.map(p => p.id === pId ? { 
-                ...p, 
-                circuitos: [...(p.circuitos || []), circuito] 
+                ...p, circuitos: [...(p.circuitos || []), circuito] 
             } : p)
         }));
       },
@@ -125,7 +145,6 @@ export const useProjectStore = create<ProjectState>()(
         const project = state.projects.find(p => p.id === pId);
         if (!project) return;
 
-        // Validação de Duplicidade (ignorando o próprio ID)
         const duplicado = project.circuitos?.some(c => 
             c.id !== circuito.id && 
             c.identificador.trim().toUpperCase() === circuito.identificador.trim().toUpperCase()
@@ -138,8 +157,7 @@ export const useProjectStore = create<ProjectState>()(
 
         set((state) => ({
             projects: state.projects.map(p => p.id === pId ? {
-                ...p, 
-                circuitos: p.circuitos.map(c => c.id === circuito.id ? circuito : c)
+                ...p, circuitos: p.circuitos.map(c => c.id === circuito.id ? circuito : c)
             } : p)
         }));
       },
@@ -154,18 +172,15 @@ export const useProjectStore = create<ProjectState>()(
         } : p)
       })),
 
-      // HELPER: Drag-and-Drop com Soft Validation
       setCargaCircuit: (pId, cargaId, circuitoId) => {
         const state = get();
         const project = state.projects.find(p => p.id === pId);
         if (!project) return;
 
-        // Caso 1: Desassociação (Remover do circuito)
         if (circuitoId === null) {
              set((state) => ({
                 projects: state.projects.map(p => p.id === pId ? {
-                    ...p,
-                    cargas: p.cargas.map(c => c.id === cargaId ? { ...c, circuito_id: null } : c)
+                    ...p, cargas: p.cargas.map(c => c.id === cargaId ? { ...c, circuito_id: null } : c)
                 } : p)
              }));
              return;
@@ -176,9 +191,6 @@ export const useProjectStore = create<ProjectState>()(
 
         if (!circuito || !carga) return;
 
-        // --- VERIFICAÇÃO SUAVE (SOFT VALIDATION) ---
-        // Alerta sobre boas práticas, mas obedece ao engenheiro.
-        
         const tipoCircuito = circuito.tipo_circuito.toLowerCase();
         const tipoCarga = carga.tipo.toLowerCase();
         let aviso = null;
@@ -195,25 +207,15 @@ export const useProjectStore = create<ProjectState>()(
              aviso = "Nota: Circuito TUE geralmente atende cargas específicas.";
         }
 
-        // Se houver aviso, notifica mas NÃO impede
         if (aviso) {
-            toast.warning(aviso, {
-                duration: 5000, 
-                action: {
-                    label: "Entendi",
-                    onClick: () => console.log("Engenheiro ciente do aviso")
-                }
-            });
+            toast.warning(aviso, { duration: 5000 });
         } else {
-            // Feedback positivo discreto
             toast.success("Carga atribuída", { duration: 1500 });
         }
 
-        // --- EXECUÇÃO DA AÇÃO (Soberania do Engenheiro) ---
         set((state) => ({
             projects: state.projects.map(p => p.id === pId ? {
-                ...p,
-                cargas: p.cargas.map(c => c.id === cargaId ? { ...c, circuito_id: circuitoId } : c)
+                ...p, cargas: p.cargas.map(c => c.id === cargaId ? { ...c, circuito_id: circuitoId } : c)
             } : p)
         }));
       },

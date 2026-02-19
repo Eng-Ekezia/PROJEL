@@ -11,21 +11,12 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
+  Accordion, AccordionContent, AccordionItem, AccordionTrigger,
 } from "@/components/ui/accordion"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 
 import { CargaDialog } from "@/components/project/dialogs/CargaDialog"
@@ -35,41 +26,29 @@ import type { Carga } from "@/types/project"
 
 export default function CargasPage() {
   const { id } = useParams<{ id: string }>()
-  const { 
-    projects, 
-    addCargaToProject, 
-    updateCargaInProject, // Necessário para edição
-    removeCargaFromProject 
-  } = useProjectStore()
+  const { projects, addCargaToProject, updateCargaInProject, removeCargaFromProject } = useProjectStore()
 
   const project = projects.find((p) => p.id === id)
 
-  // --- STATES ---
   const [isCargaDialogOpen, setIsCargaDialogOpen] = useState(false)
   const [editingCargaId, setEditingCargaId] = useState<string | null>(null)
   const [cargaFormData, setCargaFormData] = useState<Partial<Carga>>({})
 
-  // Estados dos Alertas
   const [isAutoAlertOpen, setIsAutoAlertOpen] = useState(false)
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
 
   if (!project) return <div className="p-8">Projeto não encontrado.</div>
 
-  // --- HANDLERS: DIALOG & CRUD ---
-
   const handleOpenCargaDialog = (carga?: Carga) => {
-    // Validação Hierárquica
     if (project.locais.length === 0) {
         toast.error("Você precisa criar Locais antes de adicionar Cargas.")
         return
     }
 
     if (carga) {
-      // MODO EDIÇÃO
       setEditingCargaId(carga.id)
       setCargaFormData({ ...carga })
     } else {
-      // MODO CRIAÇÃO (Default)
       setEditingCargaId(null)
       setCargaFormData({
         nome: "", 
@@ -87,25 +66,24 @@ export default function CargasPage() {
   const handleSaveCarga = () => {
     if (!project || !cargaFormData.nome || !cargaFormData.local_id) return
 
-    // Mantém o ID se estiver editando, ou cria novo
     const cargaId = editingCargaId || crypto.randomUUID()
-    
-    // Se for edição, mantém a origem original. Se for novo, é 'usuario'.
-    const origemFinal = editingCargaId && cargaFormData.origem 
-      ? cargaFormData.origem 
-      : 'usuario'
+    const origemFinal = editingCargaId && cargaFormData.origem ? cargaFormData.origem : 'usuario'
+
+    // [NOVO] Resgata a Zona a partir do Local Selecionado
+    const localSelecionado = project.locais.find(l => l.id === cargaFormData.local_id)
+    const zonaHerdada = localSelecionado?.zona_id || ""
 
     const payload: Carga = {
       id: cargaId,
       projeto_id: project.id,
-      local_id: cargaFormData.local_id!,
-      nome: cargaFormData.nome!,
+      local_id: cargaFormData.local_id,
+      zona_id: zonaHerdada, // <--- Herança Injetada Aqui
+      nome: cargaFormData.nome,
       tipo: cargaFormData.tipo || "TUG",
       potencia: Number(cargaFormData.potencia),
       unidade: cargaFormData.unidade as 'W' | 'VA',
       fator_potencia: Number(cargaFormData.fator_potencia),
       origem: origemFinal, 
-      // Se estiver editando, mantém o circuito já atribuído. Se novo, null.
       circuito_id: editingCargaId ? (cargaFormData.circuito_id || null) : null 
     }
     
@@ -128,33 +106,31 @@ export default function CargasPage() {
     setDeleteTargetId(null)
   }
 
-  // --- HANDLER: WIZARD NBR 5410 ---
   const handleAutoCargasConfirm = () => {
     if (!project) return
     setIsAutoAlertOpen(false)
 
     let contagem = 0
     project.locais.forEach(local => {
-        // 1. Calcula Iluminação
         const potIlum = NBR5410_WIZARD.calcularIluminacao(local.area_m2)
         if (potIlum > 0) {
             const cargaIlum: Carga = {
               id: crypto.randomUUID(), 
               projeto_id: project.id, 
               local_id: local.id,
+              zona_id: local.zona_id, // <--- Herança Injetada Aqui
               nome: "Iluminação Central", 
               tipo: "Iluminacao", 
               potencia: potIlum,
               unidade: 'VA', 
               fator_potencia: 1.0, 
-              origem: 'norma', // PREMISSA: Carga gerada é 'norma'
+              origem: 'norma',
               circuito_id: null
             }
             addCargaToProject(project.id, cargaIlum)
             contagem++
         }
         
-        // 2. Calcula TUGs
         const tugs = NBR5410_WIZARD.calcularTUGs(local)
         tugs.forEach(tug => { 
             const cargaTug: Carga = {
@@ -162,6 +138,7 @@ export default function CargasPage() {
                 id: crypto.randomUUID(),
                 projeto_id: project.id,
                 local_id: local.id,
+                zona_id: local.zona_id, // <--- Herança Injetada Aqui
                 circuito_id: null
             }
             addCargaToProject(project.id, cargaTug); 
@@ -171,7 +148,6 @@ export default function CargasPage() {
     toast.success(`${contagem} cargas sugeridas pela norma foram adicionadas!`)
   }
 
-  // Verifica pré-requisitos para o Wizard
   const handleOpenAutoWizard = () => {
     if (!project || project.locais.length === 0) {
         toast.error("Adicione locais com dimensões antes de usar o assistente.")
@@ -180,17 +156,13 @@ export default function CargasPage() {
     setIsAutoAlertOpen(true)
   }
 
-  // --- PREPARE DATA ---
-  // Agrupa cargas por Local para o Accordion
   const cargasPorLocal = project.locais.map(local => ({
       local,
       cargas: project.cargas.filter(c => c.local_id === local.id)
   }))
 
   return (
-    <div className="flex flex-col h-[calc(100vh-8rem)] gap-4"> {/* Layout Flex para ocupar altura e permitir scroll interno */}
-      
-      {/* HEADER FIXO */}
+    <div className="flex flex-col h-[calc(100vh-8rem)] gap-4">
       <div className="flex justify-between items-center shrink-0">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Cargas Elétricas</h2>
@@ -208,7 +180,6 @@ export default function CargasPage() {
         </div>
       </div>
 
-      {/* ÁREA DE CONTEÚDO COM SCROLL */}
       <ScrollArea className="flex-1 rounded-md border p-4 bg-background/50">
         {project.cargas.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full py-20 text-muted-foreground">
@@ -226,7 +197,6 @@ export default function CargasPage() {
                                 <Badge variant="outline" className="text-xs font-normal text-muted-foreground">
                                     {cargas.length} Cargas
                                 </Badge>
-                                {/* Soma simples de potência para visualização rápida */}
                                 <span className="text-xs text-muted-foreground ml-auto mr-4">
                                     Total: {cargas.reduce((acc, c) => acc + c.potencia, 0)} VA
                                 </span>
@@ -296,8 +266,6 @@ export default function CargasPage() {
         )}
       </ScrollArea>
 
-      {/* --- DIALOGS E ALERTAS --- */}
-
       <CargaDialog
         open={isCargaDialogOpen} 
         onOpenChange={setIsCargaDialogOpen}
@@ -307,7 +275,6 @@ export default function CargasPage() {
         locais={project.locais}
       />
 
-      {/* Alerta de Exclusão */}
       <AlertDialog open={!!deleteTargetId} onOpenChange={(open) => !open && setDeleteTargetId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -325,7 +292,6 @@ export default function CargasPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Alerta do Wizard NBR 5410 */}
       <AlertDialog open={isAutoAlertOpen} onOpenChange={setIsAutoAlertOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -354,7 +320,6 @@ export default function CargasPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
     </div>
   )
 }
