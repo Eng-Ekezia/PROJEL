@@ -27,19 +27,18 @@ interface ProjectState {
   updateCargaInProject: (projectId: string, carga: Carga) => void;
   removeCargaFromProject: (projectId: string, cargaId: string) => void;
 
-  // Proposta Actions (FASE 10)
+  // Proposta Actions
   addPropostaToProject: (projectId: string, proposta: PropostaCircuito) => void;
   updatePropostaInProject: (projectId: string, proposta: PropostaCircuito) => void;
   removePropostaFromProject: (projectId: string, propostaId: string) => void;
-  aceitarProposta: (projectId: string, propostaId: string) => void;
 
   // Circuito Actions
   addCircuitoToProject: (projectId: string, circuito: Circuito) => void;
   updateCircuitoInProject: (projectId: string, circuito: Circuito) => void;
   removeCircuitoFromProject: (projectId: string, circuitoId: string) => void;
   
-  // Helpers de Associação
-  setCargaCircuit: (projectId: string, cargaId: string, circuitoId: string | null) => void;
+  // [NOVO] Transação Atômica: Batismo do Circuito
+  converterPropostaEmCircuito: (projectId: string, propostaId: string, dadosCircuito: Partial<Circuito>) => void;
 }
 
 export const useProjectStore = create<ProjectState>()(
@@ -125,7 +124,7 @@ export const useProjectStore = create<ProjectState>()(
         projects: state.projects.map(p => p.id === pId ? { ...p, cargas: p.cargas.filter(c => c.id !== cId) } : p)
       })),
 
-      // --- PROPOSTA DE CIRCUITO IMPLEMENTATION (FASE 10) ---
+      // --- PROPOSTA DE CIRCUITO IMPLEMENTATION ---
       addPropostaToProject: (pId, proposta) => set((state) => {
         const project = state.projects.find(p => p.id === pId);
         if (!project) return state;
@@ -157,19 +156,8 @@ export const useProjectStore = create<ProjectState>()(
         };
       }),
 
-      aceitarProposta: (pId, propostaId) => set((state) => {
-        const project = state.projects.find(p => p.id === pId);
-        if (!project || !project.propostas) return state;
-        return {
-          projects: state.projects.map(p => p.id === pId ? {
-              ...p, propostas: p.propostas!.map(prop => 
-                prop.id === propostaId ? { ...prop, status: 'aceita' } : prop
-              )
-          } : p)
-        };
-      }),
-
       // --- CIRCUITO IMPLEMENTATION ---
+      
       addCircuitoToProject: (pId, circuito) => {
         const state = get();
         const project = state.projects.find(p => p.id === pId);
@@ -213,62 +201,73 @@ export const useProjectStore = create<ProjectState>()(
         }));
       },
       
+      // Ao deletar o circuito, ele simplesmente deixa de existir. As cargas voltam a ficar "órfãs" de circuito_id naturalmente.
+      // E a proposta original continua salva na lista de propostas com o status "aceita" (ou poderíamos reverter o status, 
+      // mas mantê-la como histórico é mais seguro).
       removeCircuitoFromProject: (pId, cId) => set((state) => ({
         projects: state.projects.map(p => p.id === pId ? { 
             ...p, 
-            circuitos: p.circuitos.filter(c => c.id !== cId),
-            cargas: p.cargas.map(carga => 
-              carga.circuito_id === cId ? { ...carga, circuito_id: null } : carga
-            )
+            circuitos: p.circuitos.filter(c => c.id !== cId)
         } : p)
       })),
 
-      setCargaCircuit: (pId, cargaId, circuitoId) => {
-        const state = get();
-        const project = state.projects.find(p => p.id === pId);
-        if (!project) return;
+      // --- TRANSAÇÃO ATÔMICA: BATISMO DE CIRCUITO ---
+      converterPropostaEmCircuito: (pId, propostaId, dadosCircuito) => {
+        set((state) => {
+          const project = state.projects.find(p => p.id === pId);
+          if (!project || !project.propostas) return state;
 
-        if (circuitoId === null) {
-             set((state) => ({
-                projects: state.projects.map(p => p.id === pId ? {
-                    ...p, cargas: p.cargas.map(c => c.id === cargaId ? { ...c, circuito_id: null } : c)
-                } : p)
-             }));
-             return;
-        }
+          const propostaIndex = project.propostas.findIndex(p => p.id === propostaId);
+          if (propostaIndex === -1) return state;
 
-        const circuito = project.circuitos?.find(c => c.id === circuitoId);
-        const carga = project.cargas.find(c => c.id === cargaId);
+          const proposta = project.propostas[propostaIndex];
 
-        if (!circuito || !carga) return;
+          // 1. Validação estrita do Identificador
+          const idPadronizado = dadosCircuito.identificador?.trim().toUpperCase();
+          if (!idPadronizado) {
+              toast.error("O identificador do circuito é obrigatório.");
+              return state;
+          }
 
-        const tipoCircuito = circuito.tipo_circuito.toLowerCase();
-        const tipoCarga = carga.tipo.toLowerCase();
-        let aviso = null;
+          const duplicado = project.circuitos?.some(c => c.identificador === idPadronizado);
+          
+          if (duplicado) {
+            toast.error(`O identificador "${idPadronizado}" já está em uso neste projeto.`);
+            return state; // Aborta a transação, estado intacto
+          }
 
-        const isIluminacao = tipoCircuito.includes('iluminacao');
-        const isTug = tipoCircuito.includes('tomadas') && !tipoCircuito.includes('especifico');
-        const isTue = tipoCircuito.includes('especifico');
+          // 2. Criação do Circuito com Snapshot Imutável
+          const novoCircuito = {
+            ...dadosCircuito,
+            id: crypto.randomUUID(),
+            identificador: idPadronizado,
+            projeto_id: pId,
+            proposta_id: proposta.id,
+            cargas_ids: [...proposta.cargas_ids], // Desacopla a referência
+            snapshot_proposta: JSON.parse(JSON.stringify(proposta)), // Deep copy garantida
+            status: 'rascunho', // Nasce como rascunho de circuito até ser calculado
+            data_criacao: new Date().toISOString()
+          } as Circuito;
 
-        if (isIluminacao && tipoCarga !== 'iluminacao') {
-            aviso = "Atenção: Misturar tomadas em circuito de iluminação requer cuidados (ver NBR 5410 9.5.3).";
-        } else if (isTug && tipoCarga !== 'tug') {
-             aviso = "Nota: Carga não classificada como TUG em circuito de TUG.";
-        } else if (isTue && tipoCarga !== 'tue' && tipoCarga !== 'motor') {
-             aviso = "Nota: Circuito TUE geralmente atende cargas específicas.";
-        }
+          toast.success(`Circuito ${idPadronizado} formalizado com sucesso!`);
 
-        if (aviso) {
-            toast.warning(aviso, { duration: 5000 });
-        } else {
-            toast.success("Carga atribuída", { duration: 1500 });
-        }
+          // 3. Efetivação da Transação Atômica
+          return {
+            projects: state.projects.map(p => {
+              if (p.id !== pId) return p;
+              
+              // Muda o status da proposta na mesma renderização
+              const propostasAtualizadas = [...(p.propostas || [])];
+              propostasAtualizadas[propostaIndex] = { ...proposta, status: 'aceita' };
 
-        set((state) => ({
-            projects: state.projects.map(p => p.id === pId ? {
-                ...p, cargas: p.cargas.map(c => c.id === cargaId ? { ...c, circuito_id: circuitoId } : c)
-            } : p)
-        }));
+              return {
+                ...p,
+                propostas: propostasAtualizadas,
+                circuitos: [...(p.circuitos || []), novoCircuito]
+              };
+            })
+          };
+        });
       },
 
     }),
