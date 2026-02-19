@@ -1,42 +1,70 @@
 import { useEffect, useState } from "react"
+import { useParams } from "react-router-dom"
+import { toast } from "sonner"
+import { Loader2, AlertTriangle, Info, Zap, CheckCircle2 } from "lucide-react" 
+
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
+import { Badge } from "@/components/ui/badge"
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription
 } from "@/components/ui/dialog"
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Loader2 } from "lucide-react" 
-import type { Circuito, Zona } from "@/types/project"
 
-// URL da API (Idealmente viria de env vars)
+import type { Circuito, Zona, PropostaCircuito } from "@/types/project"
+import { useProjectStore } from "@/store/useProjectStore"
+
 const API_URL = "http://localhost:8000/api/v1"; 
-
-interface CircuitDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  data: Partial<Circuito>
-  setData: (data: Partial<Circuito>) => void
-  onSave: () => void
-  zonas: Zona[]
-  isEditing: boolean
-}
 
 interface ApiOptions {
     tipos: { codigo: string, descricao: string }[]
     metodos_instalacao: { codigo: string, descricao: string }[]
 }
 
-export function CircuitDialog({ open, onOpenChange, data, setData, onSave, zonas, isEditing }: CircuitDialogProps) {
+export interface CircuitDialogProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  zonas: Zona[]
+  propostaContext?: PropostaCircuito | null
+  onSuccess?: () => void
   
+  data?: any
+  setData?: any
+  onSave?: any
+  isEditing?: boolean
+}
+
+export function CircuitDialog({ 
+    open, onOpenChange, zonas, propostaContext, isEditing, onSuccess 
+}: CircuitDialogProps) {
+  
+  const { id: projectId } = useParams<{ id: string }>()
+  const { converterPropostaEmCircuito, projects } = useProjectStore()
+  const project = projects.find(p => p.id === projectId)
+
   const [options, setOptions] = useState<ApiOptions | null>(null)
   const [loading, setLoading] = useState(false)
 
-  // 1. Fetch da Verdade Normativa (Backend)
+  // [NOVO] Estado para rastrear os campos com erro de validação
+  const [fieldErrors, setFieldErrors] = useState<{ identificador?: boolean; zona_id?: boolean }>({})
+
+  const [formData, setFormData] = useState<Partial<Circuito>>({
+      identificador: '',
+      tipo_circuito: 'TUG',
+      tensao_nominal: 220,
+      circuitos_agrupados: 1,
+      metodo_instalacao: 'B1',
+      material_condutor: 'COBRE',
+      isolacao: 'PVC',
+      sobrescreve_influencias: false,
+      zona_id: ''
+  })
+
   useEffect(() => {
     if (open && !options) {
         setLoading(true)
@@ -53,61 +81,151 @@ export function CircuitDialog({ open, onOpenChange, data, setData, onSave, zonas
     }
   }, [open])
 
-  // 2. Defaults Inteligentes
   useEffect(() => {
-    if (open && !isEditing && !data.identificador) {
-        setData({
-            ...data,
-            tipo_circuito: 'TUG', // Default mais comum mas pode ser ajustado conforme perfil do local/carga
+    if (open && propostaContext) {
+        const multiplasZonas = propostaContext.zonas_ids.length > 1;
+        setFormData({
+            identificador: '', 
+            tipo_circuito: 'TUG', 
+            tensao_nominal: 220,
+            circuitos_agrupados: 1,
             metodo_instalacao: 'B1',
-            tensao_nominal: 127,
             material_condutor: 'COBRE',
             isolacao: 'PVC',
             sobrescreve_influencias: false,
-            circuitos_agrupados: 1
+            zona_id: !multiplasZonas && propostaContext.zonas_ids.length > 0 ? propostaContext.zonas_ids[0] : ''
         })
+        setFieldErrors({}) // Reseta erros ao abrir
     }
-  }, [open, isEditing])
+  }, [open, propostaContext])
+
+  const handleFormalizar = () => {
+      if (!projectId || !propostaContext || !project) return;
+
+      let hasError = false;
+      const newErrors = { identificador: false, zona_id: false };
+
+      const idPadronizado = formData.identificador?.trim().toUpperCase();
+
+      // Validação Identificador
+      if (!idPadronizado) {
+          toast.error("O identificador do circuito é obrigatório (Ex: C1).")
+          newErrors.identificador = true;
+          hasError = true;
+      } else {
+          const duplicado = project.circuitos?.some(c => c.identificador === idPadronizado);
+          if (duplicado) {
+              toast.error(`O identificador "${idPadronizado}" já está em uso neste projeto.`);
+              newErrors.identificador = true;
+              hasError = true;
+          }
+      }
+
+      // Validação Zona
+      if (!formData.zona_id) {
+          toast.error("Você deve declarar explicitamente a Zona Governante do circuito.")
+          newErrors.zona_id = true;
+          hasError = true;
+      }
+
+      if (hasError) {
+          setFieldErrors(newErrors);
+          return;
+      }
+
+      converterPropostaEmCircuito(projectId, propostaContext.id, formData as Circuito)
+      
+      if (onSuccess) onSuccess(); 
+      onOpenChange(false)
+  }
+
+  if (!propostaContext && !isEditing) return null; 
+
+  const multiplasZonas = propostaContext ? propostaContext.zonas_ids.length > 1 : false;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px]"> {/* MODAL MAIS LARGO */}
+      <DialogContent className="sm:max-w-[750px] overflow-hidden flex flex-col max-h-[90vh]">
         <DialogHeader>
-          <DialogTitle>{isEditing ? "Editar Circuito" : "Novo Circuito"}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2 text-xl">
+             <Zap className="h-5 w-5 text-primary" /> Formalizar Circuito
+          </DialogTitle>
+          <DialogDescription>
+            Defina os parâmetros elétricos e normativos definitivos para este agrupamento.
+          </DialogDescription>
         </DialogHeader>
         
         {loading ? (
-            <div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground"/></div>
+            <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground"/></div>
         ) : (
-            <div className="grid gap-4 py-4">
-                {/* Linha 1: Identificação e Zona */}
-                <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-6 py-2 overflow-y-auto pr-2">
+                
+                {propostaContext && (
+                    <div className="bg-muted/30 border rounded-lg p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                            <h4 className="text-sm font-semibold flex items-center gap-2">
+                                <Info className="h-4 w-4" /> Origem: {propostaContext.descricao_intencao}
+                            </h4>
+                            <Badge variant="secondary">{propostaContext.cargas_ids.length} Cargas Envolvidas</Badge>
+                        </div>
+                        {propostaContext.observacoes_normativas && (
+                            <p className="text-xs text-muted-foreground border-l-2 border-primary/50 pl-2">
+                                {propostaContext.observacoes_normativas}
+                            </p>
+                        )}
+                    </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-5 bg-card p-4 rounded-lg border shadow-sm">
                     <div className="grid gap-2">
-                        <Label>Identificador</Label>
+                        <Label className="font-bold">Identificador do Circuito *</Label>
                         <Input 
                             placeholder="Ex: C1, QD-Geral" 
-                            value={data.identificador || ''} 
-                            onChange={(e) => setData({...data, identificador: e.target.value})} 
+                            className={`focus-visible:ring-primary transition-colors ${fieldErrors.identificador ? 'border-red-500 ring-1 ring-red-500 bg-red-50 dark:bg-red-950/20' : 'border-primary/50'}`}
+                            value={formData.identificador || ''} 
+                            onChange={(e) => {
+                                setFormData({...formData, identificador: e.target.value})
+                                if (fieldErrors.identificador) setFieldErrors(prev => ({...prev, identificador: false}))
+                            }} 
                         />
                     </div>
                     <div className="grid gap-2">
-                        <Label className="text-destructive-foreground">Zona Governante *</Label>
-                        <Select value={data.zona_id} onValueChange={(v) => setData({...data, zona_id: v})}>
-                            <SelectTrigger className={!data.zona_id ? "border-red-300" : ""}><SelectValue placeholder="Selecione a Zona" /></SelectTrigger>
+                        <Label className="font-bold flex items-center gap-2">
+                            Zona Governante *
+                            {multiplasZonas && <AlertTriangle className="h-4 w-4 text-yellow-500" />}
+                        </Label>
+                        <Select 
+                            value={formData.zona_id} 
+                            onValueChange={(v) => {
+                                setFormData({...formData, zona_id: v})
+                                if (fieldErrors.zona_id) setFieldErrors(prev => ({...prev, zona_id: false}))
+                            }}
+                        >
+                            <SelectTrigger className={`transition-colors ${fieldErrors.zona_id ? "border-red-500 ring-1 ring-red-500 bg-red-50 dark:bg-red-950/20" : (!formData.zona_id ? "border-red-300 ring-1 ring-red-200" : "")}`}>
+                                <SelectValue placeholder="Determine a Zona (Condição Pior)" />
+                            </SelectTrigger>
                             <SelectContent>
-                                {zonas.map(z => <SelectItem key={z.id} value={z.id}>{z.nome}</SelectItem>)}
+                                {zonas.map(z => (
+                                    <SelectItem key={z.id} value={z.id}>
+                                        {z.nome} {propostaContext?.zonas_ids.includes(z.id) ? "(Envolvida)" : ""}
+                                    </SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
+                        {multiplasZonas && (
+                            <span className="text-[10px] text-yellow-600 font-medium leading-tight">
+                                Atenção: As cargas pertencem a zonas diferentes. Segundo a NBR 5410, você deve eleger a zona com influências externas mais severas para governar o circuito.
+                            </span>
+                        )}
                     </div>
                 </div>
 
                 <Separator />
 
-                {/* Linha 2: Elétrica Básica */}
                 <div className="grid grid-cols-3 gap-4">
                     <div className="grid gap-2">
-                        <Label>Tipo</Label>
-                        <Select value={data.tipo_circuito} onValueChange={(v: any) => setData({...data, tipo_circuito: v})}>
+                        <Label>Tipo de Circuito</Label>
+                        <Select value={formData.tipo_circuito} onValueChange={(v: any) => setFormData({...formData, tipo_circuito: v})}>
                             <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent>
                                 {options?.tipos.map(t => (
@@ -117,35 +235,33 @@ export function CircuitDialog({ open, onOpenChange, data, setData, onSave, zonas
                         </Select>
                     </div>
                     <div className="grid gap-2">
-                        <Label>Tensão (V)</Label>
+                        <Label>Tensão Nominal (V)</Label>
                         <Input 
                             type="number" 
-                            value={data.tensao_nominal} 
-                            onChange={(e) => setData({...data, tensao_nominal: Number(e.target.value)})} 
+                            value={formData.tensao_nominal} 
+                            onChange={(e) => setFormData({...formData, tensao_nominal: Number(e.target.value)})} 
                         />
                     </div>
                     <div className="grid gap-2">
-                        <Label>Agrupamento</Label>
+                        <Label>Fator de Agrupamento</Label>
                         <Input 
                             type="number" 
                             min={1}
-                            value={data.circuitos_agrupados} 
-                            onChange={(e) => setData({...data, circuitos_agrupados: Number(e.target.value)})} 
+                            placeholder="Circuitos no mesmo duto"
+                            value={formData.circuitos_agrupados} 
+                            onChange={(e) => setFormData({...formData, circuitos_agrupados: Number(e.target.value)})} 
                         />
                     </div>
                 </div>
 
-                {/* Linha 3: Instalação - CORREÇÃO DE LAYOUT */}
-                <div className="grid grid-cols-1 gap-4"> 
-                    
-                    {/* Método ocupa linha inteira agora */}
+                <div className="grid grid-cols-1 gap-4 bg-muted/10 p-4 rounded-lg border"> 
                     <div className="grid gap-2">
-                        <Label>Método de Instalação</Label>
-                        <Select value={data.metodo_instalacao} onValueChange={(v: any) => setData({...data, metodo_instalacao: v})}>
-                            <SelectTrigger className="w-full">
+                        <Label>Método de Instalação (Tabelas 36-39)</Label>
+                        <Select value={formData.metodo_instalacao} onValueChange={(v: any) => setFormData({...formData, metodo_instalacao: v})}>
+                            <SelectTrigger className="w-full bg-background">
                                 <SelectValue placeholder="Selecione o método normativo..." />
                             </SelectTrigger>
-                            <SelectContent className="max-h-[300px]">
+                            <SelectContent className="max-h-[250px]">
                                 {options?.metodos_instalacao.map((metodo) => (
                                     <SelectItem key={metodo.codigo} value={metodo.codigo}>
                                         <span className="font-bold mr-2">{metodo.codigo}</span> 
@@ -158,12 +274,11 @@ export function CircuitDialog({ open, onOpenChange, data, setData, onSave, zonas
                         </Select>
                     </div>
 
-                    {/* Materiais e Isolação na linha de baixo */}
                     <div className="grid grid-cols-2 gap-4">
                         <div className="grid gap-2">
                             <Label>Material Condutor</Label>
-                            <Select value={data.material_condutor} onValueChange={(v: any) => setData({...data, material_condutor: v})}>
-                                <SelectTrigger><SelectValue /></SelectTrigger>
+                            <Select value={formData.material_condutor} onValueChange={(v: any) => setFormData({...formData, material_condutor: v})}>
+                                <SelectTrigger className="bg-background"><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="COBRE">Cobre</SelectItem>
                                     <SelectItem value="ALUMINIO">Alumínio</SelectItem>
@@ -172,8 +287,8 @@ export function CircuitDialog({ open, onOpenChange, data, setData, onSave, zonas
                         </div>
                         <div className="grid gap-2">
                             <Label>Isolação</Label>
-                            <Select value={data.isolacao} onValueChange={(v: any) => setData({...data, isolacao: v})}>
-                                <SelectTrigger><SelectValue /></SelectTrigger>
+                            <Select value={formData.isolacao} onValueChange={(v: any) => setFormData({...formData, isolacao: v})}>
+                                <SelectTrigger className="bg-background"><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="PVC">PVC</SelectItem>
                                     <SelectItem value="EPR">EPR</SelectItem>
@@ -184,20 +299,26 @@ export function CircuitDialog({ open, onOpenChange, data, setData, onSave, zonas
                     </div>
                 </div>
 
-                <div className="flex items-center space-x-2 mt-2">
+                <div className="flex items-center space-x-2 pt-2 pb-4">
                     <Checkbox 
                         id="override" 
-                        checked={data.sobrescreve_influencias} 
-                        onCheckedChange={(c) => setData({...data, sobrescreve_influencias: !!c})}
+                        checked={formData.sobrescreve_influencias} 
+                        onCheckedChange={(c) => setFormData({...formData, sobrescreve_influencias: !!c})}
                     />
-                    <Label htmlFor="override" className="text-sm font-normal text-muted-foreground">
-                        Sobrescrever influências da Zona (Forçar parâmetros manuais)
+                    <Label htmlFor="override" className="text-sm font-normal text-muted-foreground cursor-pointer">
+                        Sobrescrever matriz de influências da Zona (Assumir responsabilidade manual)
                     </Label>
                 </div>
 
             </div>
         )}
-        <DialogFooter><Button onClick={onSave} disabled={loading}>Salvar Circuito</Button></DialogFooter>
+        <DialogFooter className="border-t pt-4">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+            <Button onClick={handleFormalizar} disabled={loading} className="gap-2">
+                <CheckCircle2 className="w-4 h-4" />
+                Criar Circuito Definitivo
+            </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )
