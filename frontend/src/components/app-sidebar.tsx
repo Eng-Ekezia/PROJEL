@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   Map,
   MapPin,
+  ScrollText,
   Lightbulb,
   Activity,
   ArrowLeft
@@ -71,6 +72,11 @@ export function AppSidebar() {
       title: "Cargas",
       url: `/project/${projectId}/cargas`,
       icon: Lightbulb,
+    },
+    {
+      title: "Propostas de Circuitos",
+      url: `/project/${projectId}/propostas`,
+      icon: ScrollText,
     },
     {
       title: "Circuitos",

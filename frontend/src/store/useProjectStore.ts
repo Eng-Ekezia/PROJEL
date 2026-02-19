@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { toast } from "sonner"; 
-import type { Projeto, Zona, Local, Carga, Circuito } from '../types/project';
+import type { Projeto, Zona, Local, Carga, Circuito, PropostaCircuito } from '../types/project';
 
 interface ProjectState {
   projects: Projeto[];
@@ -27,6 +27,12 @@ interface ProjectState {
   updateCargaInProject: (projectId: string, carga: Carga) => void;
   removeCargaFromProject: (projectId: string, cargaId: string) => void;
 
+  // Proposta Actions (FASE 10)
+  addPropostaToProject: (projectId: string, proposta: PropostaCircuito) => void;
+  updatePropostaInProject: (projectId: string, proposta: PropostaCircuito) => void;
+  removePropostaFromProject: (projectId: string, propostaId: string) => void;
+  aceitarProposta: (projectId: string, propostaId: string) => void;
+
   // Circuito Actions
   addCircuitoToProject: (projectId: string, circuito: Circuito) => void;
   updateCircuitoInProject: (projectId: string, circuito: Circuito) => void;
@@ -41,10 +47,11 @@ export const useProjectStore = create<ProjectState>()(
     (set, get) => ({
       projects: [],
       
+      // --- PROJECT IMPLEMENTATION ---
       setProjects: (projects) => set({ projects }),
       
       addProject: (project) => set((state) => ({ 
-          projects: [...state.projects, { ...project, circuitos: [] }] 
+          projects: [...state.projects, { ...project, circuitos: [], propostas: [] }] 
       })),
 
       updateProject: (project) => set((state) => ({
@@ -55,6 +62,7 @@ export const useProjectStore = create<ProjectState>()(
           projects: state.projects.filter(p => p.id !== id) 
       })),
       
+      // --- ZONA IMPLEMENTATION ---
       addZonaToProject: (pId, zona) => set((state) => ({
         projects: state.projects.map(p => p.id === pId ? { ...p, zonas: [...p.zonas, zona] } : p)
       })),
@@ -67,6 +75,7 @@ export const useProjectStore = create<ProjectState>()(
         projects: state.projects.map(p => p.id === pId ? { ...p, zonas: p.zonas.filter(z => z.id !== zId) } : p)
       })),
 
+      // --- LOCAL IMPLEMENTATION ---
       addLocalToProject: (pId, local) => set((state) => ({
         projects: state.projects.map(p => p.id === pId ? { ...p, locais: [...p.locais, local] } : p)
       })),
@@ -79,12 +88,11 @@ export const useProjectStore = create<ProjectState>()(
         projects: state.projects.map(p => p.id === pId ? { ...p, locais: p.locais.filter(l => l.id !== lId) } : p)
       })),
 
-      // --- CARGA IMPLEMENTATION (Refatorada Fase 10) ---
+      // --- CARGA IMPLEMENTATION ---
       addCargaToProject: (pId, carga) => set((state) => {
         const project = state.projects.find(p => p.id === pId);
         if (!project) return state;
 
-        // Garantia de Integridade: Injeção de zona_id herdada
         const finalCarga = { ...carga };
         if (!finalCarga.zona_id) {
             const local = project.locais.find(l => l.id === finalCarga.local_id);
@@ -100,7 +108,6 @@ export const useProjectStore = create<ProjectState>()(
         const project = state.projects.find(p => p.id === pId);
         if (!project) return state;
 
-        // Garantia de Integridade: Injeção de zona_id herdada ao atualizar
         const finalCarga = { ...carga };
         if (!finalCarga.zona_id) {
             const local = project.locais.find(l => l.id === finalCarga.local_id);
@@ -117,6 +124,50 @@ export const useProjectStore = create<ProjectState>()(
       removeCargaFromProject: (pId, cId) => set((state) => ({
         projects: state.projects.map(p => p.id === pId ? { ...p, cargas: p.cargas.filter(c => c.id !== cId) } : p)
       })),
+
+      // --- PROPOSTA DE CIRCUITO IMPLEMENTATION (FASE 10) ---
+      addPropostaToProject: (pId, proposta) => set((state) => {
+        const project = state.projects.find(p => p.id === pId);
+        if (!project) return state;
+        const propostasAtuais = project.propostas || [];
+        return {
+          projects: state.projects.map(p => p.id === pId ? { 
+            ...p, propostas: [...propostasAtuais, proposta] 
+          } : p)
+        };
+      }),
+
+      updatePropostaInProject: (pId, proposta) => set((state) => {
+        const project = state.projects.find(p => p.id === pId);
+        if (!project || !project.propostas) return state;
+        return {
+          projects: state.projects.map(p => p.id === pId ? {
+              ...p, propostas: p.propostas!.map(prop => prop.id === proposta.id ? proposta : prop)
+          } : p)
+        };
+      }),
+
+      removePropostaFromProject: (pId, propostaId) => set((state) => {
+        const project = state.projects.find(p => p.id === pId);
+        if (!project || !project.propostas) return state;
+        return {
+          projects: state.projects.map(p => p.id === pId ? { 
+            ...p, propostas: p.propostas!.filter(prop => prop.id !== propostaId) 
+          } : p)
+        };
+      }),
+
+      aceitarProposta: (pId, propostaId) => set((state) => {
+        const project = state.projects.find(p => p.id === pId);
+        if (!project || !project.propostas) return state;
+        return {
+          projects: state.projects.map(p => p.id === pId ? {
+              ...p, propostas: p.propostas!.map(prop => 
+                prop.id === propostaId ? { ...prop, status: 'aceita' } : prop
+              )
+          } : p)
+        };
+      }),
 
       // --- CIRCUITO IMPLEMENTATION ---
       addCircuitoToProject: (pId, circuito) => {
