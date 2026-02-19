@@ -2,6 +2,8 @@ from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional
 from enum import Enum
 from datetime import datetime
+from .carga import Carga
+from .zona import Zona
 
 class StatusProposta(str, Enum):
     RASCUNHO = "rascunho"
@@ -42,3 +44,17 @@ class PropostaCircuito(PropostaCircuitoBase):
 
     class Config:
         from_attributes = True
+
+class AnalisePropostaRequest(BaseModel):
+    """Payload enviado pelo Frontend contendo as cargas selecionadas para rascunho"""
+    cargas_selecionadas: List[Carga] = Field(..., description="Cargas que o utilizador deseja agrupar")
+    zonas_do_projeto: List[Zona] = Field(..., description="Zonas existentes no projeto para contexto normativo")
+
+class AnalisePropostaResponse(BaseModel):
+    """Resposta do Motor de Domínio com os efeitos do agrupamento"""
+    potencia_total_va: float
+    potencia_total_w: float
+    locais_envolvidos_ids: List[str]
+    zonas_envolvidas_ids: List[str]
+    alertas_normativos: List[str]
+    is_valida: bool
