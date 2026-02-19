@@ -1,8 +1,5 @@
 // --- ENUMS TÉCNICOS (NBR 5410) ---
 
-// TODO: Refatorar Enums na Fase de UI para coincidir estritamente com o Backend (snake_case)
-// Backend espera: 'iluminacao' | 'tomadas_uso_geral' | 'tomadas_uso_especifico' ...
-// Por enquanto, mantemos o mapeamento visual, mas ciente da divergência apontada no Teste 2.
 export type TipoCircuito = 
   | 'ILUMINACAO' 
   | 'TUG'     // Tomada de Uso Geral
@@ -17,15 +14,14 @@ export type MaterialCondutor = 'COBRE' | 'ALUMINIO';
 
 export type Isolacao = 'PVC' | 'EPR' | 'XLPE';
 
-export type Criticidade = 'NORMAL' | 'ALTA'; // Ex: Equipamentos de suporte à vida ou alto custo
+export type Criticidade = 'NORMAL' | 'ALTA'; 
 
-// [MODIFICADO] Ciclo de vida da Proposta enriquecido para rastreabilidade real
 export type StatusProposta = 
-  | 'rascunho'   // Criada, mas não analisada
-  | 'analisada'  // Passou pela validação (frontend/backend) sem erros críticos
-  | 'invalida'   // Falhou na validação (ex: conflito grave)
-  | 'aceita'     // Virou Circuito definitivo
-  | 'descartada'; // Rejeitada pelo usuário
+  | 'rascunho'   
+  | 'analisada'  
+  | 'invalida'   
+  | 'aceita'     
+  | 'descartada'; 
 
 export type StatusDimensionamento = 'ok' | 'alerta' | 'erro';
 
@@ -37,17 +33,15 @@ export interface Zona {
   nome: string;
   descricao?: string;
   
-  // UX Metadata
   origem: 'preset' | 'ajustada' | 'custom';
   preset_id?: string;
   
-  // Influencias NBR 5410
-  temp_ambiente: string;      // AA
-  presenca_agua: string;      // AD
-  presenca_solidos: string;   // AE
-  competencia_pessoas: string;// BA
-  materiais_construcao: string; // CA
-  estrutura_edificacao: string; // CB
+  temp_ambiente: string;      
+  presenca_agua: string;      
+  presenca_solidos: string;   
+  competencia_pessoas: string;
+  materiais_construcao: string; 
+  estrutura_edificacao: string; 
   
   cor_identificacao: string;
   data_criacao: string;
@@ -79,12 +73,16 @@ export interface Carga {
   origem: 'norma' | 'usuario';
   status?: 'ativo' | 'inativo';
   
-  // [NOVO] Contexto Explícito (Fase 10 - Repair)
   zona_id?: string; 
-  
-  // Relação com Circuito (Legado/Compatibilidade)
-  // Nota: Deixará de ser manipulado diretamente pelo usuário, será derivado da Proposta
   circuito_id?: string | null; 
+}
+
+// [NOVO] Oficialização do estado de Kanban
+export interface PreCircuito {
+  id: string;
+  nome: string;
+  cargas_ids: string[];
+  justificativa_sugestao?: string; 
 }
 
 export interface PropostaCircuito {
@@ -105,37 +103,30 @@ export interface Circuito {
   id: string;
   projeto_id: string;
   
-  // Identificação
-  identificador: string; // Ex: "C1", "C2"
+  identificador: string; 
   tipo_circuito: TipoCircuito;
   descricao?: string;
   
-  // [MODIFICADO] Rastreabilidade Absoluta da Proposta
   proposta_id: string; 
-  snapshot_proposta: PropostaCircuito; // Cópia imutável do rascunho que originou este circuito
+  snapshot_proposta: PropostaCircuito; 
   
-  // Relacionamentos (Copiados da proposta no momento do "Batismo")
-  zona_id: string; // Zona dominante (a mais crítica)
-  cargas_ids: string[]; // IDs das cargas agrupadas
+  zona_id: string; 
+  cargas_ids: string[]; 
   
-  // Parâmetros de Instalação (Decisão do Usuário)
   metodo_instalacao: MetodoInstalacao;
-  sobrescreve_influencias: boolean; // Se true, usuário forçou parâmetros ignorando a Zona
+  sobrescreve_influencias: boolean; 
   
-  // Parâmetros Elétricos
-  tensao_nominal: number; // Ex: 127, 220
-  circuitos_agrupados: number; // Para cálculo de fator de agrupamento
+  tensao_nominal: number; 
+  circuitos_agrupados: number; 
   fator_agrupamento?: number;
   temperatura_ambiente?: number;
   comprimento_m?: number; 
   
-  // Condutores (Decisão ou Resultado)
   material_condutor: MaterialCondutor;
   isolacao: Isolacao;
-  secao_condutor_mm2?: number; // Resultado do dimensionamento
+  secao_condutor_mm2?: number; 
   
-  // Proteção
-  corrente_nominal_disjuntor?: number; // Resultado
+  corrente_nominal_disjuntor?: number; 
   
   data_criacao: string;
   status: 'rascunho' | 'calculado' | 'erro';
@@ -185,6 +176,7 @@ export interface Projeto {
   zonas: Zona[];
   locais: Local[];
   cargas: Carga[];
+  pre_circuitos?: PreCircuito[]; // [NOVO] Memória dos rascunhos em andamento
   propostas?: PropostaCircuito[]; 
   circuitos: Circuito[]; 
 }

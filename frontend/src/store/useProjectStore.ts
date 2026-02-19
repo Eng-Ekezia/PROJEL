@@ -1,43 +1,39 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { toast } from "sonner"; 
-import type { Projeto, Zona, Local, Carga, Circuito, PropostaCircuito } from '../types/project';
+import type { Projeto, Zona, Local, Carga, Circuito, PropostaCircuito, PreCircuito } from '../types/project';
 
 interface ProjectState {
   projects: Projeto[];
   
-  // Project Actions
   setProjects: (projects: Projeto[]) => void;
   addProject: (project: Projeto) => void;
   updateProject: (project: Projeto) => void;
   deleteProject: (id: string) => void;
   
-  // Zona Actions
   addZonaToProject: (projectId: string, zona: Zona) => void;
   updateZonaInProject: (projectId: string, zona: Zona) => void;
   removeZonaFromProject: (projectId: string, zonaId: string) => void;
   
-  // Local Actions
   addLocalToProject: (projectId: string, local: Local) => void;
   updateLocalInProject: (projectId: string, local: Local) => void;
   removeLocalFromProject: (projectId: string, localId: string) => void;
 
-  // Carga Actions
   addCargaToProject: (projectId: string, carga: Carga) => void;
   updateCargaInProject: (projectId: string, carga: Carga) => void;
   removeCargaFromProject: (projectId: string, cargaId: string) => void;
 
-  // Proposta Actions
   addPropostaToProject: (projectId: string, proposta: PropostaCircuito) => void;
   updatePropostaInProject: (projectId: string, proposta: PropostaCircuito) => void;
   removePropostaFromProject: (projectId: string, propostaId: string) => void;
 
-  // Circuito Actions
+  // [NOVO] Gestão da Prancheta (Kanban)
+  setPreCircuitosInProject: (projectId: string, preCircuitos: PreCircuito[]) => void;
+
   addCircuitoToProject: (projectId: string, circuito: Circuito) => void;
   updateCircuitoInProject: (projectId: string, circuito: Circuito) => void;
   removeCircuitoFromProject: (projectId: string, circuitoId: string) => void;
   
-  // [NOVO] Transação Atômica: Batismo do Circuito
   converterPropostaEmCircuito: (projectId: string, propostaId: string, dadosCircuito: Partial<Circuito>) => void;
 }
 
@@ -46,11 +42,10 @@ export const useProjectStore = create<ProjectState>()(
     (set, get) => ({
       projects: [],
       
-      // --- PROJECT IMPLEMENTATION ---
       setProjects: (projects) => set({ projects }),
       
       addProject: (project) => set((state) => ({ 
-          projects: [...state.projects, { ...project, circuitos: [], propostas: [] }] 
+          projects: [...state.projects, { ...project, circuitos: [], propostas: [], pre_circuitos: [] }] 
       })),
 
       updateProject: (project) => set((state) => ({
@@ -74,7 +69,6 @@ export const useProjectStore = create<ProjectState>()(
         projects: state.projects.map(p => p.id === pId ? { ...p, zonas: p.zonas.filter(z => z.id !== zId) } : p)
       })),
 
-      // --- LOCAL IMPLEMENTATION ---
       addLocalToProject: (pId, local) => set((state) => ({
         projects: state.projects.map(p => p.id === pId ? { ...p, locais: [...p.locais, local] } : p)
       })),
@@ -156,8 +150,11 @@ export const useProjectStore = create<ProjectState>()(
         };
       }),
 
-      // --- CIRCUITO IMPLEMENTATION ---
-      
+      // [NOVO] Implementação da Prancheta
+      setPreCircuitosInProject: (pId, preCircuitos) => set((state) => ({
+        projects: state.projects.map(p => p.id === pId ? { ...p, pre_circuitos: preCircuitos } : p)
+      })),
+
       addCircuitoToProject: (pId, circuito) => {
         const state = get();
         const project = state.projects.find(p => p.id === pId);
@@ -211,7 +208,6 @@ export const useProjectStore = create<ProjectState>()(
         } : p)
       })),
 
-      // --- TRANSAÇÃO ATÔMICA: BATISMO DE CIRCUITO ---
       converterPropostaEmCircuito: (pId, propostaId, dadosCircuito) => {
         set((state) => {
           const project = state.projects.find(p => p.id === pId);
@@ -233,30 +229,27 @@ export const useProjectStore = create<ProjectState>()(
           
           if (duplicado) {
             toast.error(`O identificador "${idPadronizado}" já está em uso neste projeto.`);
-            return state; // Aborta a transação, estado intacto
+            return state; 
           }
 
-          // 2. Criação do Circuito com Snapshot Imutável
           const novoCircuito = {
             ...dadosCircuito,
             id: crypto.randomUUID(),
             identificador: idPadronizado,
             projeto_id: pId,
             proposta_id: proposta.id,
-            cargas_ids: [...proposta.cargas_ids], // Desacopla a referência
-            snapshot_proposta: JSON.parse(JSON.stringify(proposta)), // Deep copy garantida
-            status: 'rascunho', // Nasce como rascunho de circuito até ser calculado
+            cargas_ids: [...proposta.cargas_ids], 
+            snapshot_proposta: JSON.parse(JSON.stringify(proposta)), 
+            status: 'rascunho', 
             data_criacao: new Date().toISOString()
           } as Circuito;
 
           toast.success(`Circuito ${idPadronizado} formalizado com sucesso!`);
 
-          // 3. Efetivação da Transação Atômica
           return {
             projects: state.projects.map(p => {
               if (p.id !== pId) return p;
               
-              // Muda o status da proposta na mesma renderização
               const propostasAtualizadas = [...(p.propostas || [])];
               propostasAtualizadas[propostaIndex] = { ...proposta, status: 'aceita' };
 

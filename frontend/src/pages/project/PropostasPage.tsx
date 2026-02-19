@@ -19,16 +19,10 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Input } from "@/components/ui/input"
 
 import { useProjectStore } from "@/store/useProjectStore"
-import type { Carga, PropostaCircuito } from "@/types/project"
+import type { Carga, PropostaCircuito, PreCircuito } from "@/types/project"
 import { CircuitDialog } from "@/components/project/dialogs/CircuitDialog"
 
-interface PreCircuito {
-  id: string;
-  nome: string;
-  cargas_ids: string[];
-  justificativa_sugestao?: string; 
-}
-
+// --- SUB-COMPONENTES DE UI (DND) COM CONTEXTO ESPACIAL APRIMORADO ---
 function DraggableCarga({ carga, localNome, zonaNome, zonaCor, isSelected, onToggleSelect }: { carga: Carga, localNome: string, zonaNome: string, zonaCor?: string, isSelected: boolean, onToggleSelect: (id: string) => void }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: carga.id, data: { carga } })
 
@@ -112,12 +106,23 @@ function validarPropostaLocal(cargas: Carga[]): { alertas: string[], ok: boolean
 
 export default function PropostasPage() {
   const { id } = useParams<{ id: string }>()
-  const { projects, addPropostaToProject } = useProjectStore()
+  
+  // [NOVO] Conexão com o método global para salvar o quadro de rascunhos
+  const { projects, addPropostaToProject, setPreCircuitosInProject } = useProjectStore()
 
   const project = projects.find((p) => p.id === id)
 
+  // [NOVO] Lê os rascunhos da Store (Memória) ao invés do useState local
+  const preCircuitos = project?.pre_circuitos || []
+
+  // Helper para atualizar os Pré-circuitos no Global State como se fosse um setState
+  const updatePreCircuitos = (updater: (prev: PreCircuito[]) => PreCircuito[]) => {
+      if (!project) return;
+      const novoEstado = updater(preCircuitos);
+      setPreCircuitosInProject(project.id, novoEstado);
+  }
+
   const [selectedCargaIds, setSelectedCargaIds] = useState<string[]>([])
-  const [preCircuitos, setPreCircuitos] = useState<PreCircuito[]>([])
   const [activeDragItem, setActiveDragItem] = useState<Carga | null>(null)
   const [activeDropId, setActiveDropId] = useState<string | null>(null)
   const [isAssistantLoading, setIsAssistantLoading] = useState(false)
@@ -129,7 +134,6 @@ export default function PropostasPage() {
 
   if (!project) return <div className="p-8">Projeto não encontrado.</div>
 
-  // [CORREÇÃO AQUI]: A fonte da verdade agora verifica diretamente a coleção de circuitos do projeto
   const cargasEmCircuitosDefinitivos = project.circuitos?.flatMap(c => c.cargas_ids) || []
   const cargasEmPreCircuitos = preCircuitos.flatMap(pc => pc.cargas_ids)
   
@@ -155,12 +159,13 @@ export default function PropostasPage() {
     const cargaId = active.id as string
     const targetId = over.id as string
 
-    setPreCircuitos(prev => prev.map(pc => ({
+    // [NOVO] Uso do wrapper updatePreCircuitos
+    updatePreCircuitos(prev => prev.map(pc => ({
         ...pc, cargas_ids: pc.cargas_ids.filter(id => id !== cargaId)
     })))
 
     if (targetId !== 'pool') {
-        setPreCircuitos(prev => prev.map(pc => 
+        updatePreCircuitos(prev => prev.map(pc => 
             pc.id === targetId ? { ...pc, cargas_ids: [...pc.cargas_ids, cargaId] } : pc
         ))
     }
@@ -169,12 +174,12 @@ export default function PropostasPage() {
   const moverSelecionadasPara = (targetId: string) => {
     if (selectedCargaIds.length === 0) return
 
-    setPreCircuitos(prev => prev.map(pc => ({
+    updatePreCircuitos(prev => prev.map(pc => ({
         ...pc, cargas_ids: pc.cargas_ids.filter(id => !selectedCargaIds.includes(id))
     })))
 
     if (targetId !== 'pool') {
-        setPreCircuitos(prev => prev.map(pc => 
+        updatePreCircuitos(prev => prev.map(pc => 
             pc.id === targetId ? { ...pc, cargas_ids: [...pc.cargas_ids, ...selectedCargaIds] } : pc
         ))
     }
@@ -184,19 +189,19 @@ export default function PropostasPage() {
   }
 
   const adicionarPreCircuito = () => {
-      setPreCircuitos(prev => [
+      updatePreCircuitos(prev => [
           ...prev, 
           { id: crypto.randomUUID(), nome: `Pré-Circuito ${prev.length + 1}`, cargas_ids: [] }
       ])
   }
 
   const deletarPreCircuito = (id: string) => {
-      setPreCircuitos(prev => prev.filter(pc => pc.id !== id))
+      updatePreCircuitos(prev => prev.filter(pc => pc.id !== id))
       toast.success("Pré-circuito removido. Cargas voltaram para a lista.")
   }
 
   const atualizarNomePreCircuito = (id: string, novoNome: string) => {
-      setPreCircuitos(prev => prev.map(pc => pc.id === id ? { ...pc, nome: novoNome } : pc))
+      updatePreCircuitos(prev => prev.map(pc => pc.id === id ? { ...pc, nome: novoNome } : pc))
   }
 
   const simularAssistente = () => {
@@ -231,7 +236,7 @@ export default function PropostasPage() {
       if (novasSugestoes.length === 0) {
         toast.info("Nenhum padrão óbvio encontrado. Agrupe as tomadas manualmente.")
       } else {
-        setPreCircuitos(prev => [...novasSugestoes, ...prev])
+        updatePreCircuitos(prev => [...novasSugestoes, ...prev])
         toast.success(`${novasSugestoes.length} agrupamentos sugeridos!`)
       }
       
