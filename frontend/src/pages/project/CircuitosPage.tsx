@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useParams } from "react-router-dom"
 import { toast } from "sonner"
 import { Trash2, AlertCircle, Zap, Activity } from "lucide-react"
@@ -23,17 +23,26 @@ import {
 import { useProjectStore } from "@/store/useProjectStore"
 import type { Circuito, Zona, Carga } from "@/types/project"
 
-// --- COMPONENTE DE TABELA (O Coração da Página) ---
+const API_URL = "http://localhost:8000/api/v1"; 
+
+interface ApiOptions {
+    tipos: { codigo: string, descricao: string }[]
+    metodos_instalacao: { codigo: string, descricao: string }[]
+}
+
+// --- COMPONENTE DE TABELA (Dinâmico) ---
 function CircuitosTable({ 
     circuitos, 
     zonas,
     todasCargas,
+    options,
     onUpdate, 
     onDelete 
 }: { 
   circuitos: Circuito[], 
   zonas: Zona[],
   todasCargas: Carga[],
+  options: ApiOptions | null,
   onUpdate: (circuito: Circuito) => void,
   onDelete: (id: string) => void
 }) {
@@ -55,9 +64,9 @@ function CircuitosTable({
             <TableRow>
               <TableHead className="w-[120px] font-bold">Identificador</TableHead>
               <TableHead className="w-[150px]">Zona Gov.</TableHead>
-              <TableHead className="w-[130px]">Tipo</TableHead>
-              <TableHead className="w-[120px]">Cargas / Pot.</TableHead> {/* Read-only info */}
-              <TableHead className="w-[180px]">Método Inst.</TableHead>
+              <TableHead className="w-[150px]">Tipo</TableHead>
+              <TableHead className="w-[120px]">Cargas / Pot.</TableHead> 
+              <TableHead className="w-[200px]">Método Inst.</TableHead>
               <TableHead className="w-[80px]">Tens.(V)</TableHead>
               <TableHead className="w-[90px]">Comp.(m)</TableHead>
               <TableHead className="w-[90px]">Temp.(°C)</TableHead>
@@ -67,7 +76,6 @@ function CircuitosTable({
           </TableHeader>
           <TableBody>
             {circuitos.map((circuito) => {
-              // Calcula dados em tempo real das cargas herdadas
               const cargasDoCircuito = todasCargas.filter(c => circuito.cargas_ids?.includes(c.id))
               const potenciaTotal = cargasDoCircuito.reduce((acc, c) => acc + c.potencia, 0)
 
@@ -104,21 +112,20 @@ function CircuitosTable({
                     </Select>
                   </TableCell>
 
-                  {/* TIPO */}
+                  {/* TIPO (DINÂMICO PELA API) */}
                   <TableCell>
                     <Select 
                       value={circuito.tipo_circuito} 
                       onValueChange={(val) => onUpdate({ ...circuito, tipo_circuito: val as any })}
+                      disabled={!options}
                     >
                       <SelectTrigger className="h-8 px-2">
-                        <SelectValue />
+                        <SelectValue placeholder={options ? "Selecione" : "Carregando..."} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="ILUMINACAO">Iluminação</SelectItem>
-                        <SelectItem value="TUG">TUG</SelectItem>
-                        <SelectItem value="TUE">TUE</SelectItem>
-                        <SelectItem value="MOTOR">Motor</SelectItem>
-                        <SelectItem value="DISTRIBUICAO">Distribuição</SelectItem>
+                        {options?.tipos.map(t => (
+                            <SelectItem key={t.codigo} value={t.codigo}>{t.descricao}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </TableCell>
@@ -131,20 +138,25 @@ function CircuitosTable({
                     </div>
                   </TableCell>
 
-                  {/* MÉTODO */}
+                  {/* MÉTODO DE INSTALAÇÃO (DINÂMICO PELA API) */}
                   <TableCell>
                     <Select 
                       value={circuito.metodo_instalacao}
                       onValueChange={(val) => onUpdate({ ...circuito, metodo_instalacao: val as any })}
+                      disabled={!options}
                     >
                       <SelectTrigger className="h-8 px-2 text-xs">
-                          <SelectValue />
+                          <SelectValue placeholder={options ? "Selecione" : "Carregando..."} />
                       </SelectTrigger>
-                      <SelectContent>
-                          <SelectItem value="A1">A1 (Parede Isolada)</SelectItem>
-                          <SelectItem value="B1">B1 (Eletroduto Emb.)</SelectItem>
-                          <SelectItem value="C">C (Direto Parede)</SelectItem>
-                          <SelectItem value="F">F (Ao Ar Livre)</SelectItem>
+                      <SelectContent className="max-h-[300px]">
+                          {options?.metodos_instalacao.map((metodo) => (
+                              <SelectItem key={metodo.codigo} value={metodo.codigo}>
+                                  <span className="font-bold mr-2">{metodo.codigo}</span> 
+                                  <span className="text-muted-foreground text-xs">
+                                      {metodo.descricao.split('-')[1] || metodo.descricao}
+                                  </span>
+                              </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                   </TableCell>
@@ -240,6 +252,16 @@ export default function CircuitosPage() {
   const project = projects.find((p) => p.id === id)
 
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
+  
+  // [NOVO] Fetch dinâmico dos enums do backend
+  const [options, setOptions] = useState<ApiOptions | null>(null)
+
+  useEffect(() => {
+    fetch(`${API_URL}/circuitos/opcoes`)
+        .then(res => res.json())
+        .then(data => setOptions(data))
+        .catch(err => console.error("Erro ao buscar domínios de circuito:", err))
+  }, [])
 
   if (!project) return <div className="p-8">Projeto não encontrado.</div>
 
@@ -247,7 +269,6 @@ export default function CircuitosPage() {
 
   // --- HANDLERS ---
   const handleTableUpdate = (updatedCircuito: Circuito) => {
-      // Validação rápida de unicidade
       const duplicado = circuitos.some(c => 
           c.id !== updatedCircuito.id && 
           c.identificador === updatedCircuito.identificador
@@ -302,6 +323,7 @@ export default function CircuitosPage() {
             circuitos={circuitos} 
             zonas={project.zonas} 
             todasCargas={project.cargas}
+            options={options}
             onUpdate={handleTableUpdate}
             onDelete={handleDeleteRequest}
         />
