@@ -9,7 +9,6 @@ import {
 } from "@/components/ui/select"
 import type { Local, Zona } from "@/types/project"
 
-// Extensão de tipo para UI local
 export interface LocalComPerfil extends Local {
   tipo: 'padrao' | 'cozinha' | 'banheiro' | 'servico' | 'externo'; 
 }
@@ -36,38 +35,49 @@ export function LocalDialog({ open, onOpenChange, data, setData, onSave, zonas, 
                 <Label>Nome</Label>
                 <Input value={data.nome || ''} onChange={(e) => setData({...data, nome: e.target.value})} />
             </div>
-            <div className="grid gap-2">
-               <Label>Perfil Normativo</Label>
-               <Select value={data.tipo} onValueChange={(v: any) => setData({...data, tipo: v})}>
-                 <SelectTrigger><SelectValue /></SelectTrigger>
-                 <SelectContent>
-                   <SelectItem value="padrao">Padrão</SelectItem>
-                   <SelectItem value="cozinha">Cozinha</SelectItem>
-                   <SelectItem value="banheiro">Banheiro</SelectItem>
-                   <SelectItem value="servico">Serviço</SelectItem>
-                   <SelectItem value="externo">Externo</SelectItem>
-                 </SelectContent>
-               </Select>
+            <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                   <Label>Perfil Normativo</Label>
+                   <Select value={data.tipo} onValueChange={(v: any) => setData({...data, tipo: v})}>
+                     <SelectTrigger><SelectValue /></SelectTrigger>
+                     <SelectContent>
+                       <SelectItem value="padrao">Padrão</SelectItem>
+                       <SelectItem value="cozinha">Cozinha</SelectItem>
+                       <SelectItem value="banheiro">Banheiro</SelectItem>
+                       <SelectItem value="servico">Serviço</SelectItem>
+                       <SelectItem value="externo">Externo</SelectItem>
+                     </SelectContent>
+                   </Select>
+                </div>
+                <div className="grid gap-2">
+                   <Label>Zona</Label>
+                   <Select value={data.zona_id} onValueChange={(v) => setData({...data, zona_id: v})}>
+                     <SelectTrigger><SelectValue /></SelectTrigger>
+                     <SelectContent>{zonas.map(z => <SelectItem key={z.id} value={z.id}>{z.nome}</SelectItem>)}</SelectContent>
+                   </Select>
+                </div>
             </div>
-            <div className="grid gap-2">
-               <Label>Zona</Label>
-               <Select value={data.zona_id} onValueChange={(v) => setData({...data, zona_id: v})}>
-                 <SelectTrigger><SelectValue /></SelectTrigger>
-                 <SelectContent>{zonas.map(z => <SelectItem key={z.id} value={z.id}>{z.nome}</SelectItem>)}</SelectContent>
-               </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
+            
+            {/* NOVO: Grid com 3 colunas para acomodar o Pé-direito */}
+            <div className="grid grid-cols-3 gap-3 bg-muted/20 p-3 rounded-md border">
                <div className="grid gap-2">
-                   <Label>Área (m²)</Label>
-                   <Input type="number" value={data.area_m2} onChange={(e) => setData({...data, area_m2: Number(e.target.value)})} />
+                   <Label className="text-xs">Área (m²)</Label>
+                   <Input type="number" step="0.1" value={data.area_m2} onChange={(e) => setData({...data, area_m2: Number(e.target.value)})} />
                </div>
                <div className="grid gap-2">
-                   <Label>Perímetro (m)</Label>
-                   <Input type="number" value={data.perimetro_m} onChange={(e) => setData({...data, perimetro_m: Number(e.target.value)})} />
+                   <Label className="text-xs">Perímetro (m)</Label>
+                   <Input type="number" step="0.1" value={data.perimetro_m} onChange={(e) => setData({...data, perimetro_m: Number(e.target.value)})} />
+               </div>
+               <div className="grid gap-2">
+                   <Label className="text-xs">Pé-direito (m)</Label>
+                   <Input type="number" step="0.1" value={data.pe_direito_m} onChange={(e) => setData({...data, pe_direito_m: Number(e.target.value)})} />
                </div>
             </div>
          </div>
-         <DialogFooter><Button onClick={onSave}>Salvar</Button></DialogFooter>
+         <DialogFooter>
+             <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+             <Button onClick={onSave}>Salvar</Button>
+         </DialogFooter>
       </DialogContent>
     </Dialog>
   )

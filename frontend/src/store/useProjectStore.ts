@@ -72,14 +72,49 @@ export const useProjectStore = create<ProjectState>()(
       addLocalToProject: (pId, local) => set((state) => ({
         projects: state.projects.map(p => p.id === pId ? { ...p, locais: [...p.locais, local] } : p)
       })),
+      
       updateLocalInProject: (pId, local) => set((state) => ({
          projects: state.projects.map(p => p.id === pId ? {
              ...p, locais: p.locais.map(l => l.id === local.id ? local : l)
          } : p)
       })),
-      removeLocalFromProject: (pId, lId) => set((state) => ({
-        projects: state.projects.map(p => p.id === pId ? { ...p, locais: p.locais.filter(l => l.id !== lId) } : p)
-      })),
+      
+      removeLocalFromProject: (pId, lId) => set((state) => {
+        const project = state.projects.find(p => p.id === pId);
+        if (!project) return state;
+
+        // 1. Encontra todas as cargas deste local para apagar em cascata
+        const cargasIdsToRemove = project.cargas.filter(c => c.local_id === lId).map(c => c.id);
+
+        // 2. Remove local e as suas cargas
+        const newLocais = project.locais.filter(l => l.id !== lId);
+        const newCargas = project.cargas.filter(c => c.local_id !== lId);
+
+        // 3. Limpa referências nos Pré-Circuitos (Kanban)
+        const newPreCircuitos = (project.pre_circuitos || []).map(pc => ({
+          ...pc,
+          cargas_ids: pc.cargas_ids.filter(id => !cargasIdsToRemove.includes(id))
+        }));
+
+        // 4. Limpa referências nos Circuitos e aciona o GARBAGE COLLECTOR
+        const newCircuitos = (project.circuitos || [])
+          .map(circuito => ({
+             ...circuito,
+             cargas_ids: circuito.cargas_ids.filter(id => !cargasIdsToRemove.includes(id))
+          }))
+          // GARBAGE COLLECTOR: Se o circuito ficou com 0 cargas, morre.
+          .filter(circuito => circuito.cargas_ids.length > 0);
+
+        return {
+          projects: state.projects.map(p => p.id === pId ? { 
+              ...p, 
+              locais: newLocais,
+              cargas: newCargas,
+              pre_circuitos: newPreCircuitos,
+              circuitos: newCircuitos
+          } : p)
+        };
+      }),
 
       // --- CARGA IMPLEMENTATION ---
       addCargaToProject: (pId, carga) => set((state) => {
@@ -114,9 +149,37 @@ export const useProjectStore = create<ProjectState>()(
         };
       }),
 
-      removeCargaFromProject: (pId, cId) => set((state) => ({
-        projects: state.projects.map(p => p.id === pId ? { ...p, cargas: p.cargas.filter(c => c.id !== cId) } : p)
-      })),
+      removeCargaFromProject: (pId, cId) => set((state) => {
+        const project = state.projects.find(p => p.id === pId);
+        if (!project) return state;
+
+        // 1. Remove a carga
+        const newCargas = project.cargas.filter(c => c.id !== cId);
+
+        // 2. Limpa dos Pré-Circuitos
+        const newPreCircuitos = (project.pre_circuitos || []).map(pc => ({
+          ...pc,
+          cargas_ids: pc.cargas_ids.filter(id => id !== cId)
+        }));
+
+        // 3. Limpa dos Circuitos Definitivos e aciona o GARBAGE COLLECTOR
+        const newCircuitos = (project.circuitos || [])
+          .map(circuito => ({
+             ...circuito,
+             cargas_ids: circuito.cargas_ids.filter(id => id !== cId)
+          }))
+          // GARBAGE COLLECTOR: Se o circuito ficou com 0 cargas, morre.
+          .filter(circuito => circuito.cargas_ids.length > 0);
+
+        return {
+          projects: state.projects.map(p => p.id === pId ? { 
+              ...p, 
+              cargas: newCargas, 
+              pre_circuitos: newPreCircuitos,
+              circuitos: newCircuitos 
+          } : p)
+        };
+      }),
 
       // --- PROPOSTA DE CIRCUITO IMPLEMENTATION ---
       addPropostaToProject: (pId, proposta) => set((state) => {
