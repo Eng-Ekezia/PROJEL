@@ -97,13 +97,21 @@ export const useProjectStore = create<ProjectState>()(
         }));
 
         // 4. Limpa referências nos Circuitos e aciona o GARBAGE COLLECTOR
-        const newCircuitos = (project.circuitos || [])
+        const circuitosAntes = project.circuitos || [];
+        const newCircuitos = circuitosAntes
           .map(circuito => ({
              ...circuito,
              cargas_ids: circuito.cargas_ids.filter(id => !cargasIdsToRemove.includes(id))
           }))
-          // GARBAGE COLLECTOR: Se o circuito ficou com 0 cargas, morre.
           .filter(circuito => circuito.cargas_ids.length > 0);
+
+        // [NOVO] ALERTA DIDÁTICO
+        const circuitosRemovidos = circuitosAntes.filter(cAntes => !newCircuitos.some(cDepois => cDepois.id === cAntes.id));
+        if (circuitosRemovidos.length > 0) {
+            const nomes = circuitosRemovidos.map(c => c.identificador).join(", ");
+            // setTimeout usado para garantir que o toast dispara fora do ciclo principal de renderização do Zustand
+            setTimeout(() => toast.info(`Didática NBR 5410: Os circuitos (${nomes}) foram desfeitos automaticamente pois ficaram sem cargas.`), 0);
+        }
 
         return {
           projects: state.projects.map(p => p.id === pId ? { 
@@ -163,13 +171,20 @@ export const useProjectStore = create<ProjectState>()(
         }));
 
         // 3. Limpa dos Circuitos Definitivos e aciona o GARBAGE COLLECTOR
-        const newCircuitos = (project.circuitos || [])
+        const circuitosAntes = project.circuitos || [];
+        const newCircuitos = circuitosAntes
           .map(circuito => ({
              ...circuito,
              cargas_ids: circuito.cargas_ids.filter(id => id !== cId)
           }))
-          // GARBAGE COLLECTOR: Se o circuito ficou com 0 cargas, morre.
           .filter(circuito => circuito.cargas_ids.length > 0);
+
+        // [NOVO] ALERTA DIDÁTICO
+        const circuitosRemovidos = circuitosAntes.filter(cAntes => !newCircuitos.some(cDepois => cDepois.id === cAntes.id));
+        if (circuitosRemovidos.length > 0) {
+            const nomes = circuitosRemovidos.map(c => c.identificador).join(", ");
+            setTimeout(() => toast.info(`Didática NBR 5410: O circuito ${nomes} foi desfeito automaticamente pois a sua única carga foi apagada.`), 0);
+        }
 
         return {
           projects: state.projects.map(p => p.id === pId ? { 
