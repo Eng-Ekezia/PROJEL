@@ -3,9 +3,9 @@ from typing import List, Optional, Literal
 from enum import Enum
 
 class StatusDimensionamento(str, Enum):
-    OK = "ok"
-    ALERTA = "alerta"
-    ERRO = "erro"
+    OK = "atende"
+    ALERTA = "atende_com_restricao"
+    ERRO = "nao_atende"
 
 class VerificacaoNormativa(BaseModel):
     """Representa uma verificação individual (ex: Queda de Tensão)"""
