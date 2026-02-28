@@ -1,49 +1,45 @@
 from fastapi import APIRouter, HTTPException, status
+from pydantic import BaseModel
+from typing import List
+
+from domain_core.schemas.projeto import ProjetoEletrico
+from domain_core.schemas.local import Local
+from domain_core.schemas.zona import Zona
 from domain_core.schemas.circuito import Circuito
-from domain_core.schemas.resultados import (
-    ResultadoDimensionamento, 
-    StatusDimensionamento, 
-    MemoriaCalculo,
-    VerificacaoNormativa
-)
+from domain_core.schemas.resultados import ResultadoDimensionamento
+from domain_core.engine.dimensionador_projeto import DimensionadorProjeto
 
 router = APIRouter()
 
+class SimulacaoRequest(BaseModel):
+    projeto: ProjetoEletrico
+    locais: List[Local]
+    zona_governante: Zona
+    circuito: Circuito
+    has_dr: bool = False
+
 @router.post("/simular", response_model=ResultadoDimensionamento)
-async def simular_dimensionamento(circuito: Circuito):
+async def simular_dimensionamento(req: SimulacaoRequest):
     """
-    Endpoint Experimental (Fase 10):
-    Recebe um Circuito (com parâmetros definidos) e executa o Motor de Cálculo.
-    
-    ATENÇÃO: Retorno Mockado para validação de contrato na Fase de Repair.
+    Endpoint Fase 10:
+    Recebe um Contexto (Projeto, Locais, Zona, Circuito) e executa o Motor de Cálculo NBR 5410.
     """
-    
-    # Simulação de um processamento básico
-    # Na próxima etapa, aqui entrará a chamada para 'DimensionadorCondutores.processar(circuito)'
-    
-    return ResultadoDimensionamento(
-        circuito_id=circuito.id,
-        status_global=StatusDimensionamento.OK,
-        corrente_projeto_ib=10.5,  # Valor dummy
-        corrente_corrigida_iz=12.0, # Valor dummy
-        disjuntor_nominal_in=16.0, # Valor dummy
-        secao_condutor_mm2=2.5,    # Valor dummy
-        queda_tensao_pct=1.5,      # Valor dummy
-        verificacoes=[
-            VerificacaoNormativa(
-                criterio="Capacidade de Condução",
-                status=StatusDimensionamento.OK,
-                valor_calculado=10.5,
-                limite_normativo=24.0, # Exemplo p/ 2.5mm2
-                mensagem="Condutor suporta a corrente de projeto.",
-                referencia_nbr="Tabela 36"
-            )
-        ],
-        memoria=MemoriaCalculo(
-            passos=[
-                "Recebido circuito para cálculo.",
-                "Motor experimental acionado.",
-                "Retornando valores de teste."
-            ]
+    try:
+        engine = DimensionadorProjeto()
+        
+        # Como o engine é stateless, repassamos os dados de UI
+        resultado = engine.processar_circuito(
+            projeto=req.projeto,
+            locais=req.locais,
+            zona_governante=req.zona_governante,
+            circuito=req.circuito,
+            has_dr=req.has_dr
         )
-    )
+        
+        return resultado
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro fatal no Motor de Cálculo NBR 5410: {str(e)}"
+        )

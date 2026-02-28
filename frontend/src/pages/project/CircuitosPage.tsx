@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { useParams } from "react-router-dom"
 import { toast } from "sonner"
-import { Trash2, AlertCircle, Zap, Activity } from "lucide-react"
+import { Trash2, AlertCircle, Zap, Activity, Calculator, Loader2 } from "lucide-react"
 
 // UI Components
 import { Button } from "@/components/ui/button"
@@ -21,30 +21,33 @@ import {
 } from "@/components/ui/alert-dialog"
 
 import { useProjectStore } from "@/store/useProjectStore"
-import type { Circuito, Zona, Carga } from "@/types/project"
+import type { Circuito, Zona, Carga, Projeto } from "@/types/project"
+import { ResultadoDimensionamentoDialog } from "@/components/project/dialogs/ResultadoDimensionamentoDialog"
 
-const API_URL = "http://localhost:8000/api/v1"; 
+const API_URL = "http://localhost:8000/api/v1";
 
 interface ApiOptions {
-    tipos: { codigo: string, descricao: string }[]
-    metodos_instalacao: { codigo: string, descricao: string }[]
+  tipos: { codigo: string, descricao: string }[]
+  metodos_instalacao: { codigo: string, descricao: string }[]
 }
 
 // --- COMPONENTE DE TABELA (Dinâmico) ---
-function CircuitosTable({ 
-    circuitos, 
-    zonas,
-    todasCargas,
-    options,
-    onUpdate, 
-    onDelete 
-}: { 
-  circuitos: Circuito[], 
+function CircuitosTable({
+  circuitos,
+  zonas,
+  todasCargas,
+  options,
+  onUpdate,
+  onDelete
+}: {
+  circuitos: Circuito[],
   zonas: Zona[],
   todasCargas: Carga[],
   options: ApiOptions | null,
+  simulandoId: string | null,
   onUpdate: (circuito: Circuito) => void,
-  onDelete: (id: string) => void
+  onDelete: (id: string) => void,
+  onSimular: (circuito: Circuito) => void
 }) {
   if (circuitos.length === 0) {
     return (
@@ -65,12 +68,13 @@ function CircuitosTable({
               <TableHead className="w-[120px] font-bold">Identificador</TableHead>
               <TableHead className="w-[150px]">Zona Gov.</TableHead>
               <TableHead className="w-[150px]">Tipo</TableHead>
-              <TableHead className="w-[120px]">Cargas / Pot.</TableHead> 
+              <TableHead className="w-[120px]">Cargas / Pot.</TableHead>
               <TableHead className="w-[200px]">Método Inst.</TableHead>
               <TableHead className="w-[80px]">Tens.(V)</TableHead>
               <TableHead className="w-[90px]">Comp.(m)</TableHead>
               <TableHead className="w-[90px]">Temp.(°C)</TableHead>
               <TableHead className="w-[80px]">Agrup.</TableHead>
+              <TableHead className="text-right w-[110px]">Análise NBR</TableHead>
               <TableHead className="text-right w-[60px]">Ações</TableHead>
             </TableRow>
           </TableHeader>
@@ -83,8 +87,8 @@ function CircuitosTable({
                 <TableRow key={circuito.id} className="group">
                   {/* IDENTIFICADOR */}
                   <TableCell>
-                    <Input 
-                      defaultValue={circuito.identificador} 
+                    <Input
+                      defaultValue={circuito.identificador}
                       className="h-8 px-2 font-bold focus-visible:ring-primary"
                       onBlur={(e) => {
                         const val = e.target.value.trim().toUpperCase()
@@ -97,8 +101,8 @@ function CircuitosTable({
 
                   {/* ZONA */}
                   <TableCell>
-                    <Select 
-                      value={circuito.zona_id} 
+                    <Select
+                      value={circuito.zona_id}
                       onValueChange={(val) => onUpdate({ ...circuito, zona_id: val })}
                     >
                       <SelectTrigger className="h-8 px-2">
@@ -106,7 +110,7 @@ function CircuitosTable({
                       </SelectTrigger>
                       <SelectContent>
                         {zonas.map(z => (
-                            <SelectItem key={z.id} value={z.id}>{z.nome}</SelectItem>
+                          <SelectItem key={z.id} value={z.id}>{z.nome}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -114,8 +118,8 @@ function CircuitosTable({
 
                   {/* TIPO (DINÂMICO PELA API) */}
                   <TableCell>
-                    <Select 
-                      value={circuito.tipo_circuito} 
+                    <Select
+                      value={circuito.tipo_circuito}
                       onValueChange={(val) => onUpdate({ ...circuito, tipo_circuito: val as any })}
                       disabled={!options}
                     >
@@ -124,7 +128,7 @@ function CircuitosTable({
                       </SelectTrigger>
                       <SelectContent>
                         {options?.tipos.map(t => (
-                            <SelectItem key={t.codigo} value={t.codigo}>{t.descricao}</SelectItem>
+                          <SelectItem key={t.codigo} value={t.codigo}>{t.descricao}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -140,30 +144,30 @@ function CircuitosTable({
 
                   {/* MÉTODO DE INSTALAÇÃO (DINÂMICO PELA API) */}
                   <TableCell>
-                    <Select 
+                    <Select
                       value={circuito.metodo_instalacao}
                       onValueChange={(val) => onUpdate({ ...circuito, metodo_instalacao: val as any })}
                       disabled={!options}
                     >
                       <SelectTrigger className="h-8 px-2 text-xs">
-                          <SelectValue placeholder={options ? "Selecione" : "Carregando..."} />
+                        <SelectValue placeholder={options ? "Selecione" : "Carregando..."} />
                       </SelectTrigger>
                       <SelectContent className="max-h-[300px]">
-                          {options?.metodos_instalacao.map((metodo) => (
-                              <SelectItem key={metodo.codigo} value={metodo.codigo}>
-                                  <span className="font-bold mr-2">{metodo.codigo}</span> 
-                                  <span className="text-muted-foreground text-xs">
-                                      {metodo.descricao.split('-')[1] || metodo.descricao}
-                                  </span>
-                              </SelectItem>
-                          ))}
+                        {options?.metodos_instalacao.map((metodo) => (
+                          <SelectItem key={metodo.codigo} value={metodo.codigo}>
+                            <span className="font-bold mr-2">{metodo.codigo}</span>
+                            <span className="text-muted-foreground text-xs">
+                              {metodo.descricao.split('-')[1] || metodo.descricao}
+                            </span>
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </TableCell>
 
                   {/* TENSÃO */}
                   <TableCell>
-                    <Input 
+                    <Input
                       type="number"
                       defaultValue={circuito.tensao_nominal}
                       className="h-8 px-2"
@@ -176,7 +180,7 @@ function CircuitosTable({
 
                   {/* COMPRIMENTO */}
                   <TableCell>
-                    <Input 
+                    <Input
                       type="number"
                       placeholder="0"
                       defaultValue={circuito.comprimento_m || 0}
@@ -190,7 +194,7 @@ function CircuitosTable({
 
                   {/* TEMPERATURA */}
                   <TableCell>
-                    <Input 
+                    <Input
                       type="number"
                       placeholder="30"
                       defaultValue={circuito.temperatura_ambiente || 30}
@@ -204,25 +208,44 @@ function CircuitosTable({
 
                   {/* AGRUPAMENTO */}
                   <TableCell>
-                    <Input 
-                          type="number"
-                          min={1}
-                          defaultValue={circuito.circuitos_agrupados}
-                          className="h-8 px-2"
-                          onBlur={(e) => {
-                            const val = Number(e.target.value)
-                            if (val > 0 && val !== circuito.circuitos_agrupados) {
-                              onUpdate({ ...circuito, circuitos_agrupados: val })
-                            }
-                          }}
-                        />
+                    <Input
+                      type="number"
+                      min={1}
+                      defaultValue={circuito.circuitos_agrupados}
+                      className="h-8 px-2"
+                      onBlur={(e) => {
+                        const val = Number(e.target.value)
+                        if (val > 0 && val !== circuito.circuitos_agrupados) {
+                          onUpdate({ ...circuito, circuitos_agrupados: val })
+                        }
+                      }}
+                    />
+                  </TableCell>
+
+                  {/* ANÁLISE NBR 5410 */}
+                  <TableCell className="text-right">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 gap-1 border-indigo-200 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-800 dark:text-indigo-400 dark:hover:bg-indigo-900/40"
+                      onClick={() => onSimular(circuito)}
+                      disabled={simulandoId === circuito.id}
+                      title="Analisar e Validar na NBR 5410"
+                    >
+                      {simulandoId === circuito.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Calculator className="h-4 w-4" />
+                      )}
+                      Simular
+                    </Button>
                   </TableCell>
 
                   {/* AÇÕES */}
                   <TableCell className="text-right">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       className="h-8 w-8 text-destructive/70 hover:text-destructive hover:bg-destructive/10"
                       onClick={() => onDelete(circuito.id)}
                       title="Desfazer circuito e liberar cargas"
@@ -243,8 +266,8 @@ function CircuitosTable({
 // --- PÁGINA PRINCIPAL ---
 export default function CircuitosPage() {
   const { id } = useParams<{ id: string }>()
-  const { 
-    projects, 
+  const {
+    projects,
     updateCircuitoInProject,
     removeCircuitoFromProject
   } = useProjectStore()
@@ -252,15 +275,20 @@ export default function CircuitosPage() {
   const project = projects.find((p) => p.id === id)
 
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
-  
+
   // [NOVO] Fetch dinâmico dos enums do backend
   const [options, setOptions] = useState<ApiOptions | null>(null)
 
+  // [NOVO] Estados para simulação
+  const [simulandoId, setSimulandoId] = useState<string | null>(null)
+  const [resultadoAPI, setResultadoAPI] = useState<any>(null)
+  const [circuitoAtivoNome, setCircuitoAtivoNome] = useState<string>("")
+
   useEffect(() => {
     fetch(`${API_URL}/circuitos/opcoes`)
-        .then(res => res.json())
-        .then(data => setOptions(data))
-        .catch(err => console.error("Erro ao buscar domínios de circuito:", err))
+      .then(res => res.json())
+      .then(data => setOptions(data))
+      .catch(err => console.error("Erro ao buscar domínios de circuito:", err))
   }, [])
 
   if (!project) return <div className="p-8">Projeto não encontrado.</div>
@@ -269,83 +297,134 @@ export default function CircuitosPage() {
 
   // --- HANDLERS ---
   const handleTableUpdate = (updatedCircuito: Circuito) => {
-      const duplicado = circuitos.some(c => 
-          c.id !== updatedCircuito.id && 
-          c.identificador === updatedCircuito.identificador
-      )
-      
-      if (duplicado) {
-          toast.error(`O identificador "${updatedCircuito.identificador}" já existe.`)
-          return
-      }
+    const duplicado = circuitos.some(c =>
+      c.id !== updatedCircuito.id &&
+      c.identificador === updatedCircuito.identificador
+    )
 
-      updateCircuitoInProject(project.id, updatedCircuito)
-      toast.success("Parâmetro atualizado e salvo.", { duration: 1500 })
+    if (duplicado) {
+      toast.error(`O identificador "${updatedCircuito.identificador}" já existe.`)
+      return
+    }
+
+    updateCircuitoInProject(project.id, updatedCircuito)
+    toast.success("Parâmetro atualizado e salvo.", { duration: 1500 })
   }
 
   const handleDeleteRequest = (id: string) => setDeleteTargetId(id)
-  
+
   const confirmDelete = () => {
-      if (deleteTargetId) {
-          removeCircuitoFromProject(project.id, deleteTargetId)
-          toast.success("Circuito excluído. Suas cargas voltaram para os Rascunhos.")
-          setDeleteTargetId(null)
+    if (deleteTargetId) {
+      removeCircuitoFromProject(project.id, deleteTargetId)
+      toast.success("Circuito excluído. Suas cargas voltaram para os Rascunhos.")
+      setDeleteTargetId(null)
+    }
+  }
+
+  const handleSimular = async (circuito: Circuito) => {
+    setSimulandoId(circuito.id)
+    setCircuitoAtivoNome(circuito.identificador)
+
+    try {
+      const locaisEnvolvidosIds = new Set(
+        project.cargas.filter(c => circuito.cargas_ids?.includes(c.id)).map(c => c.local_id)
+      )
+      const locaisPayload = project.locais.filter(l => locaisEnvolvidosIds.has(l.id))
+      const zonaGovernante = project.zonas.find(z => z.id === circuito.zona_id) || project.zonas[0]
+
+      const payload = {
+        projeto: project,
+        locais: locaisPayload,
+        zona_governante: zonaGovernante,
+        circuito: circuito,
+        has_dr: false // Mock por enquanto
       }
+
+      const response = await fetch(`${API_URL}/calculos/simular`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "Erro desconhecido na API")
+      }
+
+      const data = await response.json()
+      setResultadoAPI(data)
+
+    } catch (error: any) {
+      console.error("Erro na simulação:", error)
+      toast.error(`Falha no motor de cálculo: ${error.message}`)
+    } finally {
+      setSimulandoId(null)
+    }
   }
 
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)] gap-4">
-      
+
       {/* HEADER */}
       <div className="flex justify-between items-center shrink-0">
         <div>
           <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-              <Activity className="h-6 w-6 text-primary" />
-              Quadros e Circuitos (Definitivos)
+            <Activity className="h-6 w-6 text-primary" />
+            Quadros e Circuitos (Definitivos)
           </h2>
           <p className="text-muted-foreground">
-              Ajuste fino de parâmetros elétricos e de instalação para o dimensionamento.
+            Ajuste fino de parâmetros elétricos e de instalação para o dimensionamento.
           </p>
         </div>
       </div>
 
       {/* TABLE VIEW */}
       <div className="flex-1 overflow-auto animate-in fade-in duration-300 flex flex-col gap-4">
-        
+
         <div className="flex items-center gap-2 text-sm text-muted-foreground bg-blue-50/50 p-3 rounded-lg border border-blue-100 dark:bg-blue-900/10 dark:border-blue-800 shrink-0">
-            <AlertCircle className="h-5 w-5 text-blue-500 shrink-0" />
-            <p>
-                <strong>Modo Planilha Ativo:</strong> As edições nos parâmetros elétricos são salvas automaticamente ao sair do campo. Para agrupar ou desagrupar cargas, utilize a área de <em>Rascunhos</em>.
-            </p>
+          <AlertCircle className="h-5 w-5 text-blue-500 shrink-0" />
+          <p>
+            <strong>Modo Planilha Ativo:</strong> As edições nos parâmetros elétricos são salvas automaticamente ao sair do campo. Para agrupar ou desagrupar cargas, utilize a área de <em>Rascunhos</em>.
+          </p>
         </div>
-        
-        <CircuitosTable 
-            circuitos={circuitos} 
-            zonas={project.zonas} 
-            todasCargas={project.cargas}
-            options={options}
-            onUpdate={handleTableUpdate}
-            onDelete={handleDeleteRequest}
+
+        <CircuitosTable
+          circuitos={circuitos}
+          zonas={project.zonas}
+          todasCargas={project.cargas}
+          options={options}
+          simulandoId={simulandoId}
+          onUpdate={handleTableUpdate}
+          onDelete={handleDeleteRequest}
+          onSimular={handleSimular}
         />
       </div>
 
       {/* DIALOG DELETE ALERT */}
       <AlertDialog open={!!deleteTargetId} onOpenChange={(open) => !open && setDeleteTargetId(null)}>
-          <AlertDialogContent>
-              <AlertDialogHeader>
-                  <AlertDialogTitle>Desfazer Circuito Definitivo?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                      Tem certeza? O agrupamento será desfeito e todas as cargas vinculadas a este circuito voltarão imediatamente para a lista de "Cargas Livres" nos Rascunhos. Esta ação não pode ser desfeita.
-                  </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
-                      Sim, desfazer circuito
-                  </AlertDialogAction>
-              </AlertDialogFooter>
-          </AlertDialogContent>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Desfazer Circuito Definitivo?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza? O agrupamento será desfeito e todas as cargas vinculadas a este circuito voltarão imediatamente para a lista de "Cargas Livres" nos Rascunhos. Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
+              Sim, desfazer circuito
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
       </AlertDialog>
+
+      {/* DIALOG RESULTADO DIMENSIONAMENTO */}
+      <ResultadoDimensionamentoDialog
+        open={!!resultadoAPI}
+        onOpenChange={(open) => !open && setResultadoAPI(null)}
+        resultado={resultadoAPI}
+        circuitoNome={circuitoAtivoNome}
+      />
 
     </div>
   )
