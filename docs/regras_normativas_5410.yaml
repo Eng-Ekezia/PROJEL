@@ -1,0 +1,114 @@
+regras_normativas:
+
+  - id: R_DR_AMBIENTE_UMIDO
+    descricao: "Ambientes com presença significativa de água exigem proteção adicional DR"
+    
+    condicoes:
+      influencias:
+        PresencaAgua: [AD2, AD3, AD4, AD5, AD6, AD7, AD8]
+
+    consequencias:
+      obrigar:
+        dispositivo:
+          tipo: DR
+          sensibilidade_max: 30mA
+
+    referencia:
+      capitulo: "5.1.3"
+      descricao: "Proteção adicional contra choques elétricos"
+
+---
+
+  - id: R_TEMPERATURA_CORRECAO
+    descricao: "Temperaturas elevadas reduzem a capacidade de condução de corrente"
+
+    condicoes:
+      influencias:
+        TemperaturaAmbiente: [AA5, AA6, AA7, AA8]
+
+    consequencias:
+      aplicar:
+        fator_correcao:
+          tipo: temperatura
+          tabela: "Tabela 43"
+
+    referencia:
+      capitulo: "6.2.5"
+      descricao: "Capacidade de condução de corrente"
+
+---
+
+  - id: R_PUBLICO_RESTRICOES
+    descricao: "Locais com público exigem medidas adicionais de proteção"
+
+    condicoes:
+      influencias:
+        CompetenciaPessoas: [BA1, BA2, BA3]
+
+    consequencias:
+      obrigar:
+        medidas:
+          - protecao_adicional
+          - isolamento_reforcado
+          - acesso_restrito_componentes
+
+    referencia:
+      norma_complementar: "NBR 13570"
+      capitulo: "Locais de afluência de público"
+
+---
+
+  - id: R_RISCO_INCENDIO
+    descricao: "Materiais combustíveis aumentam risco de incêndio"
+
+    condicoes:
+      influencias:
+        MateriaisProcessadosArmazenados: [BE2, BE3]
+
+    consequencias:
+      obrigar:
+        medidas:
+          - protecao_termica
+          - limitacao_temperatura
+          - dispositivos_protecao_adequados
+
+    referencia:
+      capitulo: "5.2.2"
+      descricao: "Proteção contra incêndio"
+
+---
+
+  - id: R_ATMOSFERA_CORROSIVA
+    descricao: "Ambientes corrosivos exigem proteção dos componentes"
+
+    condicoes:
+      influencias:
+        SubstanciasCorrosivasPoluentes: [AF2, AF3, AF4]
+
+    consequencias:
+      obrigar:
+        caracteristicas_componentes:
+          - resistencia_corrosao
+          - invólucro_protegido
+
+    referencia:
+      capitulo: "6.1.3"
+      descricao: "Condições de serviço e influências externas"
+
+---
+
+  - id: R_DESCARGAS_ATMOSFERICAS
+    descricao: "Risco de descargas atmosféricas exige proteção contra surtos"
+
+    condicoes:
+      influencias:
+        DescargasAtmosfericas: [AQ2, AQ3]
+
+    consequencias:
+      obrigar:
+        dispositivo:
+          tipo: DPS
+
+    referencia:
+      capitulo: "5.4.2"
+      descricao: "Proteção contra sobretensões transitórias"
