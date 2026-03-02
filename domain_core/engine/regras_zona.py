@@ -15,7 +15,13 @@ class RegrasZonaEngine:
         Avalia as influências da zona e preenche as restrições normativas.
         Consulta regras_normativas_5410.yaml
         """
-        restricoes = RestricoesNormativas()
+        # Busca queda de tensão baseada no tipo de circuito
+        # No futuro, podemos usar a zona_governante para mais contextos
+        limite_queda = self.repo.get_limite_queda_tensao(
+            tipo_circuito=contexto.circuito.tipo_circuito.value,
+            tipo_ponto="terminal"
+        )
+        restricoes = RestricoesNormativas(limite_queda_tensao_pct=limite_queda)
         influencias = contexto.influencias_externas
         regras_all = self.repo.get_todas_regras()
         

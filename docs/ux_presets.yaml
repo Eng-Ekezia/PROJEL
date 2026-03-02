@@ -1,0 +1,56 @@
+presets:
+  RES_SECA:
+    categoria_a:
+      TemperaturaAmbiente: AA4
+      PresencaAgua: AD1
+    categoria_b:
+      CompetenciaPessoas: BA1
+    categoria_c:
+      ConstrucaoMateriais: CA1
+      EstruturaContato: CB1
+  RES_MOLHADA:
+    categoria_a:
+      TemperaturaAmbiente: AA4
+      PresencaAgua: AD3
+    categoria_b:
+      CompetenciaPessoas: BA1
+    categoria_c:
+      ConstrucaoMateriais: CA1
+      EstruturaContato: CB1
+  RES_EXTERNA:
+    categoria_a:
+      TemperaturaAmbiente: AA5
+      PresencaAgua: AD4
+    categoria_b:
+      CompetenciaPessoas: BA1
+    categoria_c:
+      ConstrucaoMateriais: CA1
+      EstruturaContato: CB1
+  COM_ESCRITORIO:
+    categoria_a:
+      TemperaturaAmbiente: AA4
+      PresencaAgua: AD1
+    categoria_b:
+      CompetenciaPessoas: BA4
+    categoria_c:
+      ConstrucaoMateriais: CA1
+      EstruturaContato: CB1
+  COM_PUBLICO:
+    categoria_a:
+      TemperaturaAmbiente: AA4
+      PresencaAgua: AD1
+    categoria_b:
+      CompetenciaPessoas: BA1
+      Fuga: BD3
+    categoria_c:
+      ConstrucaoMateriais: CA1
+      EstruturaContato: CB1
+  COM_SERVICO:
+    categoria_a:
+      TemperaturaAmbiente: AA4
+      PresencaAgua: AD2
+    categoria_b:
+      CompetenciaPessoas: BA4
+    categoria_c:
+      ConstrucaoMateriais: CA1
+      EstruturaContato: CB1

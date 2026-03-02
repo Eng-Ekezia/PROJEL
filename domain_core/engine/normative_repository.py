@@ -11,6 +11,7 @@ class NormativeRepository:
     _docs_dir: str = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "docs")
     nbr_data: Dict[str, Any] = {}
     regras_data: Dict[str, Any] = {}
+    ux_presets: Dict[str, Any] = {}
     
     def __new__(cls):
         if cls._instance is None:
@@ -21,9 +22,14 @@ class NormativeRepository:
     def _load_data(self):
         nbr_path = os.path.join(self._docs_dir, "NBR5410.yaml")
         regras_path = os.path.join(self._docs_dir, "regras_normativas_5410.yaml")
+        presets_path = os.path.join(self._docs_dir, "ux_presets.yaml")
         
         with open(nbr_path, 'r', encoding='utf-8') as f:
             self.nbr_data = yaml.safe_load(f)
+            
+        with open(presets_path, 'r', encoding='utf-8') as f:
+            presets_content = yaml.safe_load(f)
+            self.ux_presets = presets_content.get('presets', {}) if presets_content else {}
             
         with open(regras_path, 'r', encoding='utf-8') as f:
             docs: List[Any] = list(yaml.safe_load_all(f))
@@ -79,3 +85,42 @@ class NormativeRepository:
         except KeyError as e:
             print(f"[ERROR NBR] KeyError ao buscar tabela de ampacidade! Chave não encontrada: {e}")
             return {}
+
+    def get_resistividade(self, material: str, temperatura_c: int = 70) -> float:
+        """
+        No repositório da fase 10 base, retornamos os valores padrão da NBR 5410.
+        Para expansões futuras, este método pode buscar no YAML de termodinâmica.
+        Resistividade (Ohm.mm^2/m).
+        """
+        mat = material.lower().strip()
+        if mat == "cobre":
+            return 0.0225  # a 70ºC
+        elif mat == "aluminio" or mat == "alumínio":
+            return 0.0360  # a 70ºC
+        raise ValueError(f"Material não normatizado para condutores: {material}")
+
+    def get_limite_queda_tensao(self, tipo_circuito: str, tipo_ponto: str = "terminal") -> float:
+        """
+        Busca em regras_normativas_5410 (R_QUEDA_TENSAO_LIMITE).
+        Retorna em % float.
+        """
+        for regra in self.get_todas_regras():
+            if regra.get("id") == "R_QUEDA_TENSAO_LIMITE":
+                limites = regra.get("consequencias", {}).get("obrigar", {}).get("limites", {})
+                
+                # O dict no YAML separa entre 'iluminacao' e 'outros_usos'
+                alvo = limites.get(tipo_circuito, limites.get("outros_usos", {}))
+                return float(alvo.get(tipo_ponto, 4.0))
+        
+        # Fallback normativo da NBR
+        return 4.0
+
+    def get_influencias_by_preset(self, preset_id: str) -> Dict[str, Any]:
+        """
+        Retorna as influências esperadas para um determinado ID de preset.
+        Nesta versão, os presets são carregados do arquivo ux_presets.yaml.
+        """
+        if preset_id not in self.ux_presets:
+            raise ValueError(f"Preset não reconhecido: {preset_id}")
+            
+        return self.ux_presets[preset_id]

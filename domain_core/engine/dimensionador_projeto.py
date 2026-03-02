@@ -59,15 +59,19 @@ class DimensionadorProjeto:
              builder.resultado.erros_entrada.append("Falta de carga no circuito.")
              return builder.compilar()
              
+        # Heurística para FPS (já que as cargas individuais ainda não injetam)
+        fp_estimado = 0.8 if circuito.tipo_circuito.value == "motor" else 0.95
+             
         # 3. Matemática da Corrente
         corrente_projeto = cor
         if corrente_projeto is None:
              corrente_projeto = CalculoCorrente.calcular_corrente_projeto(
                   potencia_W=pot, 
-                  tensao_V=circuito.tensao_nominal
+                  tensao_V=circuito.tensao_nominal,
+                  fator_potencia=fp_estimado
              )
         builder.resultado.corrente_projeto_ib = corrente_projeto
-        builder.adicionar_passo(f"IB (Corrente Nominal de Projeto) = {corrente_projeto:.2f} A")
+        builder.adicionar_passo(f"IB (Corrente Nominal de Projeto) = {corrente_projeto:.2f} A, FP={fp_estimado}")
         
         # Fator de Correcao de Temperatura
         fc_temperatura = 1.0 # default
@@ -119,13 +123,14 @@ class DimensionadorProjeto:
         
         # 5. Dimensionar Queda de Tensão
         fases_calculo = 1 # F-N
+        rho_material = self.selecionador_cabo.repo.get_resistividade(circuito.material_condutor, 70)
         queda = CalculoQuedaTensao.calcular_queda_tensao_percentual(
             corrente_A=corrente_projeto,
             secao_mm2=secao,
             comprimento_m=circuito.comprimento_m,
             tensao_V=circuito.tensao_nominal,
             fases=fases_calculo,
-            material=circuito.material_condutor
+            rho=rho_material
         )
         builder.resultado.queda_tensao_pct = queda
         val_queda = ValidacoesNormativas.validar_queda_tensao(queda, restricoes.limite_queda_tensao_pct)

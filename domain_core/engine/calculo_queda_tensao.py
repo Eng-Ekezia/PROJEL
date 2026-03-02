@@ -4,10 +4,6 @@ class CalculoQuedaTensao:
     Não decide seção, apenas avalia as consequências elétricas.
     """
     
-    # Resistividade do cobre a 70°C (Ohm.m^2/m)
-    RHO_COBRE = 0.0225 
-    RHO_ALUMINIO = 0.036
-    
     @staticmethod
     def calcular_queda_tensao_percentual(
         corrente_A: float,
@@ -15,7 +11,7 @@ class CalculoQuedaTensao:
         comprimento_m: float,
         tensao_V: float,
         fases: int,
-        material: str = "cobre"
+        rho: float
     ) -> float:
         """
         Calcula a queda de tensão percentual (DeltaV %).
@@ -26,7 +22,6 @@ class CalculoQuedaTensao:
         if secao_mm2 <= 0:
             return float('inf')
             
-        rho = CalculoQuedaTensao.RHO_COBRE if material.lower() == "cobre" else CalculoQuedaTensao.RHO_ALUMINIO
         fator_fases = 1.732 if fases == 3 else 2.0
         
         # Queda em Volts

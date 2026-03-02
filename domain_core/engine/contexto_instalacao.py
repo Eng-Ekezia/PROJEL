@@ -12,7 +12,7 @@ class FatorCorrecao(BaseModel):
 
 class RestricoesNormativas(BaseModel):
     fatores_correcao: List[FatorCorrecao] = Field(default_factory=list)
-    limite_queda_tensao_pct: float = Field(default=4.0) # Padrão NBR 5410
+    limite_queda_tensao_pct: float = Field(...) # Removido default 4.0
     exige_dr_30ma: bool = Field(default=False)
     exige_dps: bool = Field(default=False)
     grau_ip_minimo: Optional[str] = None
@@ -29,7 +29,7 @@ class ContextoInstalacao(BaseModel):
     circuito: Circuito
     
     # As restrições serão preenchidas pelas engines de regras
-    restricoes: RestricoesNormativas = Field(default_factory=RestricoesNormativas)
+    restricoes: Optional[RestricoesNormativas] = None
     
     @property
     def influencias_externas(self) -> Dict[str, str]:

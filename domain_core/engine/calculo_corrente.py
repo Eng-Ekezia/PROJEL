@@ -9,7 +9,7 @@ class CalculoCorrente:
     def calcular_corrente_projeto(
         potencia_W: float, 
         tensao_V: float, 
-        fator_potencia: float = 0.92,
+        fator_potencia: float,
         fases: int = 1
     ) -> float:
         """
