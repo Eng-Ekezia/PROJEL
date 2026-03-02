@@ -1,114 +1,1371 @@
+# ============================================================================
+# REGRAS NORMATIVAS - NBR 5410:2005
+# Instalações Elétricas de Baixa Tensão
+# ============================================================================
+# 
+# Este arquivo contém as regras normativas estruturadas para automação de 
+# cálculos e verificações de conformidade com a NBR 5410.
+#
+# Estrutura de cada regra:
+#   - id: Identificador único da regra
+#   - descricao: Descrição textual da regra
+#   - condicoes: Condições que acionam a regra
+#   - consequencias: Ações obrigatórias, recomendadas ou cálculos
+#   - referencia: Referência à seção/tabela da norma
+# ============================================================================
+
 regras_normativas:
 
-  - id: R_DR_AMBIENTE_UMIDO
-    descricao: "Ambientes com presença significativa de água exigem proteção adicional DR"
-    
-    condicoes:
-      influencias:
-        PresencaAgua: [AD2, AD3, AD4, AD5, AD6, AD7, AD8]
+# ============================================================================
+# SEÇÃO 1: PROTEÇÃO CONTRA CHOQUES ELÉTRICOS (Seção 5.1 NBR 5410)
+# ============================================================================
 
-    consequencias:
-      obrigar:
-        dispositivo:
-          tipo: DR
+- id: R_DR_AMBIENTE_UMIDO
+  descricao: "Ambientes com presença significativa de água exigem proteção adicional DR"
+  condicoes:
+    influencias:
+      PresencaAgua: [AD2, AD3, AD4, AD5, AD6, AD7, AD8]
+  consequencias:
+    obrigar:
+      dispositivo:
+        tipo: DR
+        sensibilidade_max: 30mA
+        tempo_atuacao_max: 0.03s
+  referencia:
+    capitulo: "5.1.3.2"
+    descricao: "Proteção adicional contra choques elétricos"
+    item: "Ambientes molhados ou úmidos"
+
+- id: R_DR_LOCAIS_ESPECIAIS
+  descricao: "Locais com banheira ou chuveiro exigem proteção DR de alta sensibilidade"
+  condicoes:
+    tipo_local: ["banheiro", "area_servico", "lavanderia", "sauna"]
+  consequencias:
+    obrigar:
+      dispositivo:
+        tipo: DR
+        sensibilidade_max: 30mA
+      circuito:
+        protecao_adicional: true
+  referencia:
+    capitulo: "5.1.3.2.2"
+    descricao: "Locais contendo banheira ou chuveiro"
+    norma_complementar: "NBR 13534"
+
+- id: R_DR_TOMADAS_EXTERNAS
+  descricao: "Tomadas externas e em áreas úmidas devem ter proteção DR"
+  condicoes:
+    ou:
+      - tipo_circuito: "tomada_externa"
+      - local: "area_externa"
+      - influencias:
+          PresencaAgua: [AD2, AD3, AD4, AD5, AD6, AD7, AD8]
+  consequencias:
+    obrigar:
+      dispositivo:
+        tipo: DR
+        sensibilidade_max: 30mA
+  referencia:
+    capitulo: "5.1.3.2.3"
+    descricao: "Proteção adicional - tomadas em áreas externas"
+
+- id: R_DR_CIRCUITOS_TOMADAS_ATE_20A
+  descricao: "Circuitos de tomadas até 20A devem ter proteção diferencial residual"
+  condicoes:
+    e:
+      - tipo_circuito: "tomada"
+      - corrente_nominal_max: 20
+  consequencias:
+    obrigar:
+      dispositivo:
+        tipo: DR
+        sensibilidade_max: 30mA
+  referencia:
+    capitulo: "5.1.3.2.2"
+    item: "c"
+    descricao: "Proteção adicional por DR em circuitos de tomadas"
+
+- id: R_ATERRAMENTO_OBRIGATORIO
+  descricao: "Todas as massas devem ser aterradas"
+  condicoes:
+    tipo_equipamento: ["aparelho_classe_I", "equipamento_fixo", "tomada"]
+  consequencias:
+    obrigar:
+      aterramento:
+        obrigatorio: true
+        condutor_protecao: true
+  referencia:
+    capitulo: "5.1.2.2"
+    descricao: "Proteção por seccionamento automático da alimentação"
+
+- id: R_SECAO_MINIMA_CONDUTOR_PROTECAO
+  descricao: "Seção mínima do condutor de proteção conforme condutor fase"
+  condicoes:
+    tipo_condutor: "protecao"
+  consequencias:
+    aplicar:
+      calculo:
+        tipo: "secao_condutor_protecao"
+        tabela: "Tabela 58"
+        formula: |
+          Se S_fase <= 16mm²: S_pe = S_fase
+          Se 16 < S_fase <= 35mm²: S_pe = 16mm²
+          Se S_fase > 35mm²: S_pe = S_fase/2
+  referencia:
+    capitulo: "6.4.3.1"
+    tabela: "Tabela 58"
+    descricao: "Seção mínima do condutor de proteção"
+
+- id: R_ESQUEMA_ATERRAMENTO_TN
+  descricao: "Requisitos para esquema TN (TN-S, TN-C, TN-C-S)"
+  condicoes:
+    esquema_aterramento: ["TN-S", "TN-C", "TN-C-S"]
+  consequencias:
+    obrigar:
+      protecao:
+        tipo: "seccionamento_automatico"
+        dispositivo: ["disjuntor", "fusivel", "DR"]
+      tempo_seccionamento:
+        127V: 0.8s
+        220V: 0.4s
+        400V: 0.2s
+  referencia:
+    capitulo: "5.1.2.2.4"
+    tabela: "Tabela 21"
+    descricao: "Tempos de seccionamento em esquema TN"
+
+- id: R_ESQUEMA_ATERRAMENTO_TT
+  descricao: "Requisitos para esquema TT"
+  condicoes:
+    esquema_aterramento: "TT"
+  consequencias:
+    obrigar:
+      dispositivo:
+        tipo: DR
+        obrigatorio: true
+      formula_resistencia: "Ra x I_delta_n <= 50V"
+  referencia:
+    capitulo: "5.1.2.2.4"
+    item: "b"
+    descricao: "Esquema TT - proteção por DR obrigatória"
+
+- id: R_ESQUEMA_ATERRAMENTO_IT
+  descricao: "Requisitos para esquema IT"
+  condicoes:
+    esquema_aterramento: "IT"
+  consequencias:
+    obrigar:
+      dispositivo:
+        tipo: "monitor_isolamento"
+        obrigatorio: true
+      primeira_falta:
+        acao: "sinalizacao"
+      segunda_falta:
+        protecao: "seccionamento_automatico"
+  referencia:
+    capitulo: "5.1.2.2.4"
+    item: "c"
+    descricao: "Esquema IT com monitor de isolamento"
+
+# ============================================================================
+# SEÇÃO 2: PROTEÇÃO CONTRA SOBRECORRENTES (Seção 5.3 NBR 5410)
+# ============================================================================
+
+- id: R_PROTECAO_SOBRECARGA
+  descricao: "Dispositivo de proteção deve interromper sobrecarga antes de dano térmico"
+  condicoes:
+    tipo_protecao: "sobrecarga"
+  consequencias:
+    obrigar:
+      formula_coordenacao: |
+        IB <= In <= IZ
+        I2 <= 1.45 x IZ
+      onde:
+        IB: "Corrente de projeto do circuito"
+        In: "Corrente nominal do dispositivo de proteção"
+        IZ: "Capacidade de condução do condutor"
+        I2: "Corrente de atuação efetiva do dispositivo"
+  referencia:
+    capitulo: "5.3.2"
+    item: "5.3.2.2"
+    descricao: "Proteção contra sobrecargas"
+
+- id: R_PROTECAO_CURTO_CIRCUITO
+  descricao: "Proteção contra correntes de curto-circuito"
+  condicoes:
+    tipo_protecao: "curto_circuito"
+  consequencias:
+    obrigar:
+      verificacao:
+        capacidade_ruptura: "Icn >= Icc_prospectiva"
+        energia_passante: "I²t_dispositivo <= I²t_condutor"
+      formula_energia: |
+        I²t_condutor = (S / k)²
+  referencia:
+    capitulo: "5.3.4"
+    tabela: "Tabela 38"
+    descricao: "Proteção contra curtos-circuitos"
+
+- id: R_COORDENACAO_PROTECAO
+  descricao: "Seletividade entre dispositivos de proteção em série"
+  condicoes:
+    configuracao: "serie"
+    multiplos_dispositivos: true
+  consequencias:
+    recomendar:
+      seletividade:
+        tipo: ["total", "parcial"]
+        criterio: "I2_montante >= 1.6 x I2_jusante"
+  referencia:
+    capitulo: "5.3.6"
+    descricao: "Coordenação entre dispositivos de proteção"
+
+- id: R_CAPACIDADE_RUPTURA_MINIMA
+  descricao: "Capacidade de interrupção mínima dos dispositivos"
+  condicoes:
+    tipo_instalacao: "residencial"
+  consequencias:
+    obrigar:
+      capacidade_minima:
+        disjuntor: "3kA"
+        fusivel: "50A"
+  referencia:
+    capitulo: "5.3.4.2"
+    descricao: "Capacidade de interrupção mínima"
+
+# ============================================================================
+# SEÇÃO 3: DIMENSIONAMENTO DE CONDUTORES (Seção 6.2.5 NBR 5410)
+# ============================================================================
+
+- id: R_SECAO_MINIMA_CONDUTOR_FASE
+  descricao: "Seção mínima dos condutores fase conforme tipo de instalação"
+  condicoes:
+    tipo_condutor: ["fase", "neutro"]
+  consequencias:
+    obrigar:
+      secao_minima:
+        circuito_iluminacao: 1.5
+        circuito_forca: 2.5
+        circuito_sinal: 0.5
+      unidade: "mm²"
+  referencia:
+    capitulo: "6.2.6"
+    tabela: "Tabela 47"
+    descricao: "Seções mínimas dos condutores"
+
+- id: R_CAPACIDADE_CONDUCAO_CORRENTE
+  descricao: "Capacidade de condução de corrente dos condutores"
+  condicoes:
+    tipo_calculo: "ampacidade"
+  consequencias:
+    aplicar:
+      metodo:
+        tipo: "tabela_ampacidade"
+        tabela_base: "Tabela 36"
+        variaveis:
+          - material: ["cobre", "aluminio"]
+          - isolacao: ["PVC_70C", "XLPE_90C", "EPR_90C"]
+          - metodo_instalacao: ["A1", "A2", "B1", "B2", "C", "D"]
+          - numero_condutores_carregados: [2, 3]
+      fatores_correcao:
+        - temperatura_ambiente
+        - agrupamento_circuitos
+        - resistividade_termica_solo
+  referencia:
+    capitulo: "6.2.5.1"
+    tabela: "Tabela 36 a 39"
+    descricao: "Capacidade de condução de corrente"
+
+- id: R_TEMPERATURA_CORRECAO
+  descricao: "Fator de correção por temperatura ambiente"
+  condicoes:
+    influencias:
+      TemperaturaAmbiente: [AA5, AA6, AA7, AA8]
+  consequencias:
+    aplicar:
+      fator_correcao:
+        tipo: "temperatura"
+        tabela: "Tabela 40"
+        base_temperatura:
+          PVC: 30
+          XLPE: 30
+          EPR: 30
+  referencia:
+    capitulo: "6.2.5.3"
+    tabela: "Tabela 40"
+    descricao: "Fatores de correção para temperaturas ambiente"
+
+- id: R_AGRUPAMENTO_CORRECAO
+  descricao: "Fator de correção por agrupamento de circuitos"
+  condicoes:
+    numero_circuitos_agrupados: ">1"
+  consequencias:
+    aplicar:
+      fator_correcao:
+        tipo: "agrupamento"
+        tabela: "Tabela 42"
+        variaveis:
+          - numero_circuitos
+          - disposicao: ["camada_unica", "camada_multipla"]
+          - metodo_instalacao
+  referencia:
+    capitulo: "6.2.5.5"
+    tabela: "Tabela 42"
+    descricao: "Fatores de correção para agrupamento"
+
+- id: R_CONDUTOR_NEUTRO_DIMENSIONAMENTO
+  descricao: "Dimensionamento do condutor neutro"
+  condicoes:
+    tipo_condutor: "neutro"
+  consequencias:
+    aplicar:
+      criterio:
+        sistema_trifasico_equilibrado: "S_neutro >= S_fase se S_fase <= 25mm²"
+        sistema_trifasico_desequilibrado: "S_neutro = S_fase"
+        presenca_harmonicas_3ordem: "S_neutro >= S_fase (sempre)"
+  referencia:
+    capitulo: "6.2.6.2"
+    item: "6.2.6.2.2"
+    descricao: "Seção do condutor neutro"
+
+- id: R_QUEDA_TENSAO_LIMITE
+  descricao: "Limites de queda de tensão admissível"
+  condicoes:
+    tipo_verificacao: "queda_tensao"
+  consequencias:
+    obrigar:
+      limites:
+        iluminacao:
+          alimentador: 2.0  # %
+          terminal: 4.0     # %
+        outros_usos:
+          alimentador: 2.0  # %
+          terminal: 4.0     # %
+        nota: "Limites em relação à tensão nominal"
+  referencia:
+    capitulo: "6.2.7"
+    tabela: "Tabela 48"
+    descricao: "Limites de queda de tensão"
+
+- id: R_CALCULO_QUEDA_TENSAO
+  descricao: "Cálculo da queda de tensão em circuitos"
+  condicoes:
+    tipo_calculo: "queda_tensao"
+  consequencias:
+    aplicar:
+      formula:
+        monofasico: "ΔV = 2 x I x L x (R x cos φ + X x sen φ) / 1000"
+        trifasico: "ΔV = √3 x I x L x (R x cos φ + X x sen φ) / 1000"
+      unidades:
+        delta_V: "V"
+        I: "A"
+        L: "m"
+        R: "Ω/km"
+        X: "Ω/km"
+  referencia:
+    capitulo: "6.2.7.1"
+    descricao: "Cálculo de queda de tensão"
+
+# ============================================================================
+# SEÇÃO 4: PROTEÇÃO CONTRA INCÊNDIO E EFEITOS TÉRMICOS (Seção 5.2 NBR 5410)
+# ============================================================================
+
+- id: R_RISCO_INCENDIO
+  descricao: "Materiais combustíveis aumentam risco de incêndio"
+  condicoes:
+    influencias:
+      MateriaisProcessadosArmazenados: [BE2, BE3]
+  consequencias:
+    obrigar:
+      medidas:
+        - protecao_termica
+        - limitacao_temperatura_superficial
+        - dispositivos_protecao_sobrecorrente_adequados
+        - compartimentacao
+      temperatura_maxima_superficial:
+        materiais_combustiveis: 90  # °C
+        materiais_inflamaveis: 70   # °C
+  referencia:
+    capitulo: "5.2.2"
+    item: "5.2.2.4"
+    descricao: "Proteção contra incêndio"
+
+- id: R_LOCAIS_EXPLOSIVOS
+  descricao: "Atmosferas explosivas exigem instalações especiais"
+  condicoes:
+    influencias:
+      MateriaisProcessadosArmazenados: [BE3]
+  consequencias:
+    obrigar:
+      normas_aplicaveis:
+        - "NBR IEC 60079-14"
+        - "NBR IEC 60079-17"
+      classificacao_area:
+        obrigatorio: true
+        zonas: ["Zona 0", "Zona 1", "Zona 2", "Zona 20", "Zona 21", "Zona 22"]
+      equipamentos:
+        tipo: "Ex - À prova de explosão"
+        certificacao: obrigatoria
+  referencia:
+    capitulo: "5.2.6"
+    descricao: "Locais com risco de explosão"
+    norma_complementar: "NBR IEC 60079"
+
+- id: R_PROTECAO_SOBRETEMPERATURA
+  descricao: "Proteção contra efeitos térmicos prejudiciais"
+  condicoes:
+    tipo_protecao: "termica"
+  consequencias:
+    obrigar:
+      medidas:
+        - distanciamento_materiais_combustiveis
+        - barreiras_termicas
+        - limitacao_corrente
+      distancias_minimas:
+        luminarias_potencia_alta: 0.5  # metros
+        equipamentos_aquecimento: 1.0  # metros
+  referencia:
+    capitulo: "5.2.2.1"
+    descricao: "Proteção contra efeitos térmicos"
+
+# ============================================================================
+# SEÇÃO 5: DIVISÃO DA INSTALAÇÃO (Seção 6.5 NBR 5410)
+# ============================================================================
+
+- id: R_DIVISAO_CIRCUITOS_OBRIGATORIA
+  descricao: "Instalação deve ser dividida em circuitos distintos"
+  condicoes:
+    tipo_instalacao: "qualquer"
+  consequencias:
+    obrigar:
+      divisao:
+        criterios:
+          - seguranca: "facilitar manutenção e localização de falhas"
+          - funcional: "evitar perigos e danos"
+          - conservacao_energia: "otimizar uso"
+        separacao_obrigatoria:
+          - iluminacao_x_tomadas
+          - circuitos_criticos
+          - aparelhos_potencia_elevada
+  referencia:
+    capitulo: "6.5.1"
+    descricao: "Divisão da instalação"
+
+- id: R_CIRCUITOS_INDEPENDENTES_EQUIPAMENTOS
+  descricao: "Equipamentos com corrente superior a 10A devem ter circuito independente"
+  condicoes:
+    corrente_equipamento: ">10"
+  consequencias:
+    obrigar:
+      circuito:
+        tipo: "independente"
+        dedicado: true
+        protecao_exclusiva: true
+  referencia:
+    capitulo: "6.5.4.5"
+    descricao: "Circuitos independentes"
+
+- id: R_PONTOS_ILUMINACAO_MINIMOS
+  descricao: "Pontos de iluminação mínimos por cômodo"
+  condicoes:
+    tipo_circuito: "iluminacao"
+  consequencias:
+    obrigar:
+      criterio_area:
+        ate_6m2:
+          pontos_min: 1
+          potencia_min: 100  # VA
+        acima_6m2:
+          potencia_min_por_m2: 5  # VA/m2 (primeiros 6m²)
+          adicional_por_4m2: 60   # VA (cada 4m² adicionais)
+  referencia:
+    capitulo: "9.5.2.1"
+    item: "a"
+    descricao: "Iluminação - número de pontos e potências mínimas"
+
+- id: R_TOMADAS_USO_GERAL_MINIMAS
+  descricao: "Quantidade mínima de tomadas de uso geral (TUGs)"
+  condicoes:
+    tipo_circuito: "tomada"
+    tipo_ambiente: "geral"
+  consequencias:
+    obrigar:
+      criterio:
+        sala_dormitorio:
+          formula: "1 tomada por 5m ou fração de perímetro"
+          minimo: 1
+          espacamento_max: 5  # metros
+        cozinha_copa_copa_cozinha:
+          formula: "1 tomada por 3.5m ou fração de perímetro"
+          minimo_bancada: 2
+          acima_bancada: true
+        banheiro:
+          minimo: 1
+          proxima_lavatório: true
+          distancia_min_box: 0.6  # metros
+        areas_externas:
+          minimo: 1
+  referencia:
+    capitulo: "9.5.2.2"
+    descricao: "Tomadas de uso geral (TUGs)"
+
+- id: R_POTENCIA_TOMADAS_MINIMA
+  descricao: "Potência mínima atribuída às tomadas"
+  condicoes:
+    tipo_circuito: "tomada"
+  consequencias:
+    obrigar:
+      potencia:
+        banheiro_cozinha_copa_area_servico_lavanderia:
+          minimo: 600  # VA por tomada
+        demais_comodos:
+          ate_3_tomadas: 100  # VA por tomada
+          acima_3_tomadas: 600  # VA por tomada adicional
+  referencia:
+    capitulo: "9.5.2.2"
+    item: "b"
+    descricao: "Potências atribuídas às tomadas"
+
+- id: R_TOMADAS_USO_ESPECIFICO
+  descricao: "Tomadas de uso específico (TUEs)"
+  condicoes:
+    tipo_tomada: "TUE"
+  consequencias:
+    obrigar:
+      caracteristicas:
+        potencia: "potência nominal do equipamento"
+        localizacao: "próxima ao equipamento"
+        circuito: "pode ser exclusivo conforme corrente"
+  referencia:
+    capitulo: "9.5.2.3"
+    descricao: "Tomadas de uso específico (TUEs)"
+
+# ============================================================================
+# SEÇÃO 6: AMBIENTES ESPECIAIS (Seções 9 NBR 5410)
+# ============================================================================
+
+- id: R_ATMOSFERA_CORROSIVA
+  descricao: "Ambientes corrosivos exigem proteção dos componentes"
+  condicoes:
+    influencias:
+      SubstanciasCorrosivasPoluentes: [AF2, AF3, AF4]
+  consequencias:
+    obrigar:
+      caracteristicas_componentes:
+        - resistencia_corrosao
+        - invólucro_protegido
+        - grau_protecao_adequado
+      materiais_recomendados:
+        - aco_inoxidavel
+        - plastico_resistente
+        - revestimento_protetor
+  referencia:
+    capitulo: "6.1.3.2"
+    item: "6.1.3.2.6"
+    descricao: "Condições de serviço - substâncias corrosivas"
+
+- id: R_AREAS_EXTERNAS
+  descricao: "Áreas externas exigem grau de proteção adequado"
+  condicoes:
+    ou:
+      - local: "area_externa"
+      - condicoes_climaticas: "AB8"
+  consequencias:
+    obrigar:
+      grau_protecao:
+        minimo: "IP44"
+        recomendado: "IP65"
+      materiais:
+        resistente_uv: true
+        resistente_intemperies: true
+  referencia:
+    capitulo: "6.1.4"
+    descricao: "Invólucros de equipamentos"
+
+- id: R_BANHEIROS_VOLUMES
+  descricao: "Divisão em volumes de banheiros e locais com chuveiro"
+  condicoes:
+    tipo_local: ["banheiro", "box_chuveiro"]
+  consequencias:
+    obrigar:
+      volumes:
+        volume_0:
+          descricao: "Interior da banheira ou box"
+          grau_protecao_min: "IPX7"
+          tensao_max: "12V_CA ou 30V_CC SELV"
+        volume_1:
+          descricao: "Acima do volume 0 até 2,25m"
+          grau_protecao_min: "IPX4"
+          tensao_max: "25V_CA ou 60V_CC SELV"
+          aquecedores_agua: permitido
+        volume_2:
+          descricao: "0,60m além do volume 1"
+          grau_protecao_min: "IPX4"
+          iluminacao: permitida
+          tomadas: nao_permitidas
+        volume_3:
+          descricao: "2,40m além do volume 2"
+          tomadas: permitidas_com_DR
+  referencia:
+    capitulo: "9.1"
+    norma_complementar: "NBR 13534"
+    descricao: "Locais contendo banheira ou chuveiro"
+
+- id: R_PUBLICO_RESTRICOES
+  descricao: "Locais com público exigem medidas adicionais de proteção"
+  condicoes:
+    influencias:
+      CompetenciaPessoas: [BA1, BA2, BA3]
+  consequencias:
+    obrigar:
+      medidas:
+        - protecao_adicional_DR
+        - isolamento_reforcado
+        - acesso_restrito_componentes_tensao
+        - sinalizacao_seguranca
+        - iluminacao_emergencia
+  referencia:
+    capitulo: "5.1.1.4"
+    norma_complementar: "NBR 13570"
+    descricao: "Locais de afluência de público"
+
+- id: R_PISCINAS_VOLUMES
+  descricao: "Requisitos para instalações em piscinas"
+  condicoes:
+    tipo_local: "piscina"
+  consequencias:
+    obrigar:
+      volumes:
+        volume_0:
+          descricao: "Interior da piscina"
+          tensao_max: "12V_CA SELV"
+          grau_protecao: "IPX8"
+        volume_1:
+          descricao: "Até 2m horizontal e 2.5m vertical"
+          tensao_max: "25V_CA SELV ou 60V_CC SELV"
+          grau_protecao: "IPX4 ou IPX5"
+        volume_2:
+          descricao: "Até 1.5m além do volume 1"
+          protecao_DR: obrigatoria
+          grau_protecao: "IPX2 até IPX5"
+      ligacao_equipotencial:
+        obrigatoria: true
+        elementos:
+          - estruturas_metalicas
+          - tubulacoes
+          - condutores_protecao
+  referencia:
+    capitulo: "9.3"
+    descricao: "Piscinas"
+
+- id: R_CANTEIROS_OBRAS
+  descricao: "Requisitos para instalações temporárias em canteiros de obras"
+  condicoes:
+    tipo_instalacao: "canteiro_obras"
+  consequencias:
+    obrigar:
+      protecoes:
+        DR:
           sensibilidade_max: 30mA
+          obrigatorio: true
+        aterramento:
+          esquema: "TN-S ou TT"
+          obrigatorio: true
+        separacao_circuitos:
+          iluminacao: separada
+          tomadas_equipamentos: separadas
+      revisoes:
+        periodicas: true
+        frequencia: "conforme NR-18"
+  referencia:
+    capitulo: "9.7"
+    norma_complementar: "NR-18"
+    descricao: "Canteiros de obras e demolições"
 
-    referencia:
-      capitulo: "5.1.3"
-      descricao: "Proteção adicional contra choques elétricos"
+# ============================================================================
+# SEÇÃO 7: PROTEÇÃO CONTRA SOBRETENSÕES (Seção 5.4 NBR 5410)
+# ============================================================================
 
----
+- id: R_DESCARGAS_ATMOSFERICAS
+  descricao: "Risco de descargas atmosféricas exige proteção contra surtos"
+  condicoes:
+    influencias:
+      DescargasAtmosfericas: [AQ2, AQ3]
+  consequencias:
+    obrigar:
+      dispositivo:
+        tipo: DPS
+        classes: ["I", "II", "III"]
+        instalacao: "em cascata conforme classe"
+      coordenacao:
+        DPS_classe_I: "entrada da instalação (quando há SPDA)"
+        DPS_classe_II: "quadro de distribuição principal"
+        DPS_classe_III: "próximo aos equipamentos sensíveis"
+  referencia:
+    capitulo: "5.4.2"
+    item: "5.4.2.1"
+    descricao: "Proteção contra sobretensões transitórias"
+    norma_complementar: "NBR 5419"
 
-  - id: R_TEMPERATURA_CORRECAO
-    descricao: "Temperaturas elevadas reduzem a capacidade de condução de corrente"
+- id: R_DPS_OBRIGATORIO_SPDA
+  descricao: "DPS obrigatório em edificações com SPDA"
+  condicoes:
+    edificacao:
+      possui_SPDA: true
+  consequencias:
+    obrigar:
+      DPS:
+        classe_I: obrigatoria
+        localizacao: "entrada da instalação elétrica"
+        coordenacao_SPDA: true
+  referencia:
+    capitulo: "5.4.2.1.1"
+    descricao: "Proteção contra sobretensões - edificações com SPDA"
+    norma_complementar: "NBR 5419"
 
-    condicoes:
-      influencias:
-        TemperaturaAmbiente: [AA5, AA6, AA7, AA8]
+- id: R_DPS_INSTALACOES_TT
+  descricao: "DPS recomendado em instalações com esquema TT"
+  condicoes:
+    esquema_aterramento: "TT"
+  consequencias:
+    recomendar:
+      DPS:
+        classe_II: recomendada
+        motivo: "maior probabilidade de sobretensões"
+  referencia:
+    capitulo: "5.4.2.1"
+    item: "b"
+    descricao: "DPS em esquema TT"
 
-    consequencias:
-      aplicar:
-        fator_correcao:
-          tipo: temperatura
-          tabela: "Tabela 43"
+- id: R_DPS_EQUIPAMENTOS_SENSIVEIS
+  descricao: "Proteção adicional para equipamentos sensíveis"
+  condicoes:
+    tipo_equipamento: ["eletronico_sensivel", "informatica", "automacao"]
+  consequencias:
+    recomendar:
+      DPS:
+        classe_III: recomendada
+        localizacao: "próximo ao equipamento"
+        caracteristicas:
+          nivel_protecao: "baixo (< 1.5kV)"
+  referencia:
+    capitulo: "5.4.2.2"
+    descricao: "Proteção de equipamentos sensíveis"
 
-    referencia:
-      capitulo: "6.2.5"
-      descricao: "Capacidade de condução de corrente"
+# ============================================================================
+# SEÇÃO 8: ATERRAMENTO E EQUIPOTENCIALIZAÇÃO (Seção 6.4 NBR 5410)
+# ============================================================================
 
----
+- id: R_ELETRODO_ATERRAMENTO
+  descricao: "Requisitos do eletrodo de aterramento"
+  condicoes:
+    sistema: "aterramento"
+  consequencias:
+    obrigar:
+      tipos_permitidos:
+        preferenciais:
+          - haste
+          - fita
+          - malha
+          - anel
+        naturais:
+          - fundacoes_armadas
+          - tubulacoes_metalicas_enterradas
+      dimensionamento:
+        haste:
+          diametro_min: 15  # mm (aço cobreado)
+          comprimento_min: 2.4  # metros
+          profundidade_min: 0.6  # metros
+        fita_ou_cabo:
+          secao_min: 50  # mm² (cobre)
+          profundidade_min: 0.6  # metros
+      resistencia_aterramento:
+        ideal: "< 10Ω"
+        aceitavel: "< 25Ω (esquema TT)"
+  referencia:
+    capitulo: "6.4.2"
+    descricao: "Eletrodos de aterramento"
 
-  - id: R_PUBLICO_RESTRICOES
-    descricao: "Locais com público exigem medidas adicionais de proteção"
+- id: R_LIGACAO_EQUIPOTENCIAL_PRINCIPAL
+  descricao: "Ligação equipotencial principal obrigatória"
+  condicoes:
+    tipo_instalacao: "qualquer"
+  consequencias:
+    obrigar:
+      ligacao_equipotencial_principal:
+        elementos_a_conectar:
+          - eletrodo_aterramento
+          - canalizacoes_agua
+          - canalizacoes_gas
+          - sistemas_aquecimento
+          - ar_condicionado
+          - elementos_metalicos_estruturais
+          - blindagem_cabos
+        local: "origem da instalação"
+        condutor_min: 6  # mm² cobre
+  referencia:
+    capitulo: "6.4.2.1"
+    descricao: "Ligações equipotenciais"
 
-    condicoes:
-      influencias:
-        CompetenciaPessoas: [BA1, BA2, BA3]
+- id: R_LIGACAO_EQUIPOTENCIAL_SUPLEMENTAR
+  descricao: "Ligação equipotencial suplementar em locais especiais"
+  condicoes:
+    tipo_local: ["banheiro", "piscina", "area_medica"]
+  consequencias:
+    obrigar:
+      ligacao_equipotencial_suplementar:
+        elementos:
+          - massas_equipamentos
+          - elementos_condutores_estranhos
+          - tomadas_pinos_terra
+          - grelhas_metalicas
+          - ferragens_estruturais
+        condutor_min: 2.5  # mm² cobre
+  referencia:
+    capitulo: "6.4.2.2"
+    descricao: "Ligações equipotenciais suplementares"
 
-    consequencias:
-      obrigar:
-        medidas:
-          - protecao_adicional
-          - isolamento_reforcado
-          - acesso_restrito_componentes
+- id: R_CONDUTOR_PROTECAO_TIPOS
+  descricao: "Tipos e características dos condutores de proteção"
+  condicoes:
+    tipo_condutor: "protecao"
+  consequencias:
+    obrigar:
+      tipos_permitidos:
+        - condutor_multifilamento
+        - condutor_concentrico
+        - invólucro_metalico_cabo
+        - eletroduto_metalico
+      proibicoes:
+        - tubulacao_agua
+        - tubulacao_gases_liquidos_inflamaveis
+        - partes_estruturais_sujeitas_esforcos
+      identificacao:
+        cor: "verde-amarelo"
+        obrigatoria: true
+  referencia:
+    capitulo: "6.4.3"
+    descricao: "Condutores de proteção"
 
-    referencia:
-      norma_complementar: "NBR 13570"
-      capitulo: "Locais de afluência de público"
+# ============================================================================
+# SEÇÃO 9: QUADROS DE DISTRIBUIÇÃO (Seção 6.5 NBR 5410)
+# ============================================================================
 
----
+- id: R_QUADRO_DISTRIBUICAO_CARACTERISTICAS
+  descricao: "Características dos quadros de distribuição"
+  condicoes:
+    tipo_equipamento: "quadro_distribuicao"
+  consequencias:
+    obrigar:
+      caracteristicas:
+        identificacao:
+          circuitos: obrigatoria
+          legenda: obrigatoria
+        acessibilidade:
+          altura_min: 0.5  # metros do piso
+          altura_max: 2.0  # metros do piso
+        reserva_espaco:
+          reserva_tecnica_min: "15% dos dispositivos"
+        sinalizacao:
+          tensao_nominal: obrigatoria
+          corrente_nominal: obrigatoria
+          esquema_aterramento: obrigatoria
+  referencia:
+    capitulo: "6.5.4"
+    descricao: "Quadros de distribuição"
 
-  - id: R_RISCO_INCENDIO
-    descricao: "Materiais combustíveis aumentam risco de incêndio"
+- id: R_DISPOSITIVO_SECCIONAMENTO_GERAL
+  descricao: "Dispositivo geral de comando e proteção"
+  condicoes:
+    tipo_quadro: ["principal", "geral"]
+  consequencias:
+    obrigar:
+      dispositivo_geral:
+        tipo: ["disjuntor", "interruptor_fusivel"]
+        funcao: "seccionar todos os condutores vivos"
+        identificacao: "clara e inequívoca"
+        acessibilidade: "fácil acesso"
+  referencia:
+    capitulo: "6.5.3.2"
+    descricao: "Dispositivo de seccionamento geral"
 
-    condicoes:
-      influencias:
-        MateriaisProcessadosArmazenados: [BE2, BE3]
+- id: R_BARRAMENTO_NEUTRO_TERRA
+  descricao: "Barramentos de neutro e proteção"
+  condicoes:
+    tipo_quadro: "qualquer"
+  consequencias:
+    obrigar:
+      barramentos:
+        neutro:
+          obrigatorio: true
+          isolado: true
+        protecao:
+          obrigatorio: true
+          acessivel: true
+        separacao:
+          TN_C: "neutro e PE podem ser comum"
+          TN_S: "neutro e PE separados (recomendado)"
+          TT: "neutro e PE sempre separados"
+          IT: "apenas PE (sem neutro aterrado)"
+  referencia:
+    capitulo: "6.4.3.4"
+    descricao: "Barramentos de neutro e proteção"
 
-    consequencias:
-      obrigar:
-        medidas:
-          - protecao_termica
-          - limitacao_temperatura
+# ============================================================================
+# SEÇÃO 10: LINHAS ELÉTRICAS (Seção 6.2 NBR 5410)
+# ============================================================================
+
+- id: R_TIPOS_LINHAS_ELETRICAS
+  descricao: "Tipos de linhas elétricas permitidos"
+  condicoes:
+    tipo: "linha_eletrica"
+  consequencias:
+    permitir:
+      tipos:
+        - condutores_isolados_eletrodutos
+        - cabos_unipolares_eletrodutos
+        - cabos_multipolares_eletrodutos
+        - cabos_multipolares_sobre_isoladores
+        - cabos_multipolares_em_bandejas
+        - cabos_multipolares_em_leitos
+        - condutores_nus_sobre_isoladores
+        - barramentos_blindados
+  referencia:
+    capitulo: "6.2.3"
+    descricao: "Tipos de linhas elétricas"
+
+- id: R_ELETRODUTOS_CARACTERISTICAS
+  descricao: "Características e dimensionamento de eletrodutos"
+  condicoes:
+    tipo_linha: "eletroduto"
+  consequencias:
+    obrigar:
+      taxa_ocupacao_max:
+        1_condutor: 53  # %
+        2_condutores: 31  # %
+        3_ou_mais: 40  # %
+      diametro_minimo:
+        embutido: 16  # mm
+        aparente: 16  # mm
+      material:
+        tipos: ["PVC_rigido", "metalico", "flexivel"]
+        caracteristicas: "resistente às influências externas"
+      curvatura:
+        raio_minimo: "6 x diametro_externo_cabo"
+  referencia:
+    capitulo: "6.2.11"
+    tabela: "Tabela 53"
+    descricao: "Eletrodutos"
+
+- id: R_CAIXAS_PASSAGEM
+  descricao: "Caixas de passagem e derivação"
+  condicoes:
+    tipo: "caixa_passagem"
+  consequencias:
+    obrigar:
+      instalacao:
+        pontos_dificeis_acesso: obrigatoria
+        trechos_retos_longos: obrigatoria
+        distancia_max_sem_caixa: 15  # metros ou 3 curvas de 90°
+      dimensionamento:
+        comprimento_min: "16 x diametro_maior_eletroduto"
+        largura_min: "comprimento_min"
+        profundidade_min: "comprimento_min"
+      acessibilidade:
+        tampa: removivel
+        vedacao: adequada
+  referencia:
+    capitulo: "6.2.11.5"
+    descricao: "Caixas de derivação"
+
+- id: R_EMENDAS_DERIVACOES
+  descricao: "Emendas e derivações de condutores"
+  condicoes:
+    tipo: "emenda_derivacao"
+  consequencias:
+    obrigar:
+      localizacao:
+        permitida: "apenas em caixas de derivação"
+        proibida: "dentro de eletrodutos"
+      execucao:
+        resistencia_mecanica: "equivalente ao condutor"
+        resistencia_eletrica: "minima possível"
+        isolacao: "equivalente ao condutor"
+      metodos:
+        - conectores_apropriados
+        - solda
+        - compressao
+  referencia:
+    capitulo: "6.2.11.6"
+    descricao: "Emendas e derivações"
+
+# ============================================================================
+# SEÇÃO 11: EQUIPAMENTOS E DISPOSITIVOS (Seção 6.3 NBR 5410)
+# ============================================================================
+
+- id: R_DISPOSITIVOS_COMANDO
+  descricao: "Dispositivos de comando (interruptores)"
+  condicoes:
+    tipo_dispositivo: "interruptor"
+  consequencias:
+    obrigar:
+      instalacao:
+        condutor_seccionado: "fase (nunca neutro isolado)"
+        altura_recomendada: 1.3  # metros do piso acabado
+        acessibilidade: facil
+      tipos:
+        simples: "1 tecla"
+        paralelo: "2 pontos de comando"
+        intermediario: "3+ pontos de comando"
+        dimmer: "controle de intensidade luminosa"
+      identificacao:
+        circuito: recomendada
+  referencia:
+    capitulo: "6.3.4"
+    descricao: "Dispositivos de comando"
+
+- id: R_TOMADAS_PADRAO_BRASILEIRO
+  descricao: "Padrão brasileiro de tomadas (NBR 14136)"
+  condicoes:
+    tipo_dispositivo: "tomada"
+  consequencias:
+    obrigar:
+      padrao:
+        norma: "NBR 14136"
+        tipos:
+          - tipo: "10A"
+            tensao: "até 250V"
+            diametro_pinos: 4.0  # mm
+          - tipo: "20A"
+            tensao: "até 250V"
+            diametro_pinos: 4.8  # mm
+      pino_terra:
+        obrigatorio: true
+        posicao: central
+      identificacao:
+        corrente_nominal: obrigatoria
+  referencia:
+    capitulo: "6.3.5"
+    norma_complementar: "NBR 14136"
+    descricao: "Tomadas de corrente"
+
+- id: R_TOMADAS_ALTURA_INSTALACAO
+  descricao: "Altura de instalação de tomadas"
+  condicoes:
+    tipo_dispositivo: "tomada"
+  consequencias:
+    recomendar:
+      altura:
+        uso_geral: 0.3  # metros (30cm do piso acabado)
+        bancadas: 1.2  # metros (sobre bancada)
+        especifica: "conforme equipamento"
+      excecoes:
+        acessibilidade_universal: 0.4_a_1.0  # metros (NBR 9050)
+  referencia:
+    capitulo: "6.3.5.1"
+    norma_complementar: "NBR 9050"
+    descricao: "Instalação de tomadas"
+
+- id: R_LUMINARIAS_CARACTERISTICAS
+  descricao: "Características de luminárias"
+  condicoes:
+    tipo_dispositivo: "luminaria"
+  consequencias:
+    obrigar:
+      caracteristicas:
+        marcacao:
+          potencia_maxima_lampada: obrigatoria
+          tensao_nominal: obrigatoria
+          tipo_lampada: obrigatoria
+        instalacao:
+          distancia_materiais_combustiveis: conforme_fabricante
+          ventilacao: adequada
+        fixacao:
+          resistencia_mecanica: adequada
+          peso_suportado: especificado
+  referencia:
+    capitulo: "6.3.6"
+    descricao: "Luminárias"
+
+- id: R_MOTORES_PROTECAO
+  descricao: "Proteção de motores elétricos"
+  condicoes:
+    tipo_equipamento: "motor"
+  consequencias:
+    obrigar:
+      protecoes:
+        sobrecarga:
+          dispositivo: "relé térmico ou equivalente"
+          ajuste: "conforme corrente nominal motor"
+        curto_circuito:
+          dispositivo: "disjuntor motor ou fusível"
+          coordenacao: "com proteção de sobrecarga"
+        falta_fase:
+          dispositivo: "relé de falta de fase"
+          obrigatorio_trifasico: true
+      partida:
+        limitacao_corrente_partida: conforme_potencia
+        dispositivos: ["direta", "estrela_triangulo", "soft_starter", "inversor_frequencia"]
+  referencia:
+    capitulo: "6.3.8"
+    descricao: "Motores elétricos"
+
+# ============================================================================
+# SEÇÃO 12: FATOR DE POTÊNCIA (Seção 6.2.8 NBR 5410)
+# ============================================================================
+
+- id: R_FATOR_POTENCIA_MINIMO
+  descricao: "Fator de potência mínimo da instalação"
+  condicoes:
+    tipo_instalacao: "qualquer"
+  consequencias:
+    obrigar:
+      fator_potencia_min: 0.92
+      correcao:
+        obrigatoria_se: "FP < 0.92"
+        dispositivo: "banco de capacitores"
+        localizacao: ["geral", "setorizada", "individual"]
+  referencia:
+    capitulo: "6.2.8"
+    descricao: "Fator de potência"
+    legislacao: "Resolução ANEEL 414/2010"
+
+- id: R_CAPACITORES_INSTALACAO
+  descricao: "Instalação de capacitores para correção de fator de potência"
+  condicoes:
+    equipamento: "banco_capacitores"
+  consequencias:
+    obrigar:
+      protecao:
+        dispositivo_protecao: obrigatorio
+        dimensionamento: "1.35 x In_capacitor"
+      descarregamento:
+        resistor_descarga: obrigatorio
+        tempo_descarga_max: 5  # minutos para 50V residuais
+      impedancia:
+        verificacao_harmonicas: recomendada
+        filtros: "se necessário"
+  referencia:
+    capitulo: "6.2.8.2"
+    descricao: "Correção de fator de potência"
+
+# ============================================================================
+# SEÇÃO 13: HARMONICAS E PERTURBAÇÕES (Seção 6.1.6 NBR 5410)
+# ============================================================================
+
+- id: R_CORRENTES_HARMONICAS
+  descricao: "Consideração de correntes harmônicas"
+  condicoes:
+    tipo_carga: ["eletronica", "informatica", "iluminacao_led", "reatores_eletronicos"]
+  consequencias:
+    obrigar:
+      consideracoes:
+        condutor_neutro:
+          dimensionamento: "pode exigir seção superior à fase"
+          3ordem_multiplas: "podem somar-se no neutro"
+        transformador:
+          derating: "conforme taxa de distorção harmônica"
+        protecao:
+          dispositivos: "sensíveis a harmônicas"
+  referencia:
+    capitulo: "6.1.6"
+    descricao: "Harmônicas e perturbações"
+
+- id: R_NEUTRO_SOBRECARGA_HARMONICAS
+  descricao: "Proteção do condutor neutro em presença de harmônicas"
+  condicoes:
+    taxa_harmonica_3ordem: ">15%"
+  consequencias:
+    obrigar:
+      condutor_neutro:
+        secao: ">= secao_fase"
+        protecao_sobrecorrente: recomendada
+        medicao_corrente: recomendada
+  referencia:
+    capitulo: "6.2.6.2.2"
+    item: "e"
+    descricao: "Condutor neutro com harmônicas"
+
+# ============================================================================
+# SEÇÃO 14: ILUMINAÇÃO DE EMERGÊNCIA (Seção 5.8 NBR 5410)
+# ============================================================================
+
+- id: R_ILUMINACAO_EMERGENCIA_OBRIGATORIA
+  descricao: "Locais que exigem iluminação de emergência"
+  condicoes:
+    ou:
+      - tipo_local: "publico"
+      - tipo_local: "comercial"
+      - area: ">100m²"
+      - ocupacao: ">50 pessoas"
+  consequencias:
+    obrigar:
+      iluminacao_emergencia:
+        autonomia_min: 1  # hora
+        nivel_iluminamento:
+          rotas_fuga: 5  # lux (mínimo)
+          locais_risco: 15  # lux (mínimo)
+        fonte_alimentacao: "independente da rede"
+        acionamento: "automatico em falta de energia"
+  referencia:
+    capitulo: "5.8"
+    norma_complementar: "NBR 10898"
+    descricao: "Iluminação de emergência"
+
+- id: R_SINALIZACAO_EMERGENCIA
+  descricao: "Sinalização de emergência"
+  condicoes:
+    iluminacao_emergencia: true
+  consequencias:
+    obrigar:
+      sinalizacao:
+        saidas_emergencia: obrigatoria
+        rotas_fuga: obrigatoria
+        equipamentos_combate_incendio: obrigatoria
+        tipo: "fotoluminescente ou iluminada"
+  referencia:
+    capitulo: "5.8.2"
+    norma_complementar: ["NBR 13434", "NBR 10898"]
+    descricao: "Sinalização de emergência"
+
+# ============================================================================
+# SEÇÃO 15: VERIFICAÇÃO E ENSAIOS (Seção 7 NBR 5410)
+# ============================================================================
+
+- id: R_VERIFICACAO_FINAL
+  descricao: "Verificação final obrigatória"
+  condicoes:
+    etapa: "finalizacao_instalacao"
+  consequencias:
+    obrigar:
+      verificacoes:
+        - inspecao_visual
+        - ensaios
+      inspecao_visual:
+        itens:
+          - identificacao_circuitos
+          - secao_condutores
           - dispositivos_protecao_adequados
+          - conexoes_adequadas
+          - aterramento_equipotencializacao
+          - protecao_contra_choques
+          - distancias_seguranca
+      ensaios:
+        - continuidade_condutores_protecao
+        - resistencia_isolamento
+        - ensaio_funcionamento
+        - resistencia_aterramento
+  referencia:
+    capitulo: "7"
+    descricao: "Verificação final"
 
-    referencia:
-      capitulo: "5.2.2"
-      descricao: "Proteção contra incêndio"
+- id: R_ENSAIO_CONTINUIDADE
+  descricao: "Ensaio de continuidade dos condutores de proteção"
+  condicoes:
+    tipo_ensaio: "continuidade"
+  consequencias:
+    obrigar:
+      metodo:
+        instrumento: "ohmímetro ou multímetro"
+        corrente_min: 0.2  # A
+        resultado: "continuidade em toda extensão"
+  referencia:
+    capitulo: "7.3.5.1"
+    descricao: "Ensaio de continuidade"
 
----
+- id: R_ENSAIO_RESISTENCIA_ISOLAMENTO
+  descricao: "Ensaio de resistência de isolamento"
+  condicoes:
+    tipo_ensaio: "isolamento"
+  consequencias:
+    obrigar:
+      tensao_ensaio:
+        circuito_SELV: 250  # V CC
+        circuito_ate_500V: 500  # V CC
+        circuito_acima_500V: 1000  # V CC
+      resistencia_minima:
+        SELV: 0.5  # MΩ
+        ate_500V: 1.0  # MΩ
+        acima_500V: 1.0  # MΩ
+      duracao: 60  # segundos
+  referencia:
+    capitulo: "7.3.5.2"
+    tabela: "Tabela 92"
+    descricao: "Ensaio de resistência de isolamento"
 
-  - id: R_ATMOSFERA_CORROSIVA
-    descricao: "Ambientes corrosivos exigem proteção dos componentes"
+- id: R_ENSAIO_FUNCIONAMENTO
+  descricao: "Ensaio de funcionamento de dispositivos"
+  condicoes:
+    tipo_ensaio: "funcionamento"
+  consequencias:
+    obrigar:
+      dispositivos_ensaiar:
+        - DR: "botão de teste"
+        - disjuntores: "acionamento manual"
+        - interruptores: "comando"
+        - sinalizacao: "funcionamento"
+        - iluminacao_emergencia: "autonomia"
+  referencia:
+    capitulo: "7.3.5.3"
+    descricao: "Ensaio de funcionamento"
 
-    condicoes:
-      influencias:
-        SubstanciasCorrosivasPoluentes: [AF2, AF3, AF4]
+- id: R_MEDICAO_RESISTENCIA_ATERRAMENTO
+  descricao: "Medição da resistência de aterramento"
+  condicoes:
+    tipo_ensaio: "aterramento"
+  consequencias:
+    obrigar:
+      metodo:
+        instrumento: "terrômetro"
+        configuracao: "3 ou 4 pontas"
+      valores_referencia:
+        ideal: "<10Ω"
+        TT: "<25Ω"
+      periodicidade: "anual ou após modificações"
+  referencia:
+    capitulo: "7.3.5.4"
+    descricao: "Medição de resistência de aterramento"
 
-    consequencias:
-      obrigar:
-        caracteristicas_componentes:
-          - resistencia_corrosao
-          - invólucro_protegido
+# ============================================================================
+# SEÇÃO 16: MANUTENÇÃO (Seção 8 NBR 5410)
+# ============================================================================
 
-    referencia:
-      capitulo: "6.1.3"
-      descricao: "Condições de serviço e influências externas"
+- id: R_MANUTENCAO_PREVENTIVA
+  descricao: "Programa de manutenção preventiva"
+  condicoes:
+    tipo_instalacao: "qualquer"
+  consequencias:
+    recomendar:
+      periodicidade:
+        inspecao_visual: "anual"
+        ensaios_periodicos: "conforme tipo instalação"
+        limpeza: "conforme necessidade"
+      registros:
+        documentacao: obrigatoria
+        historico: obrigatoria
+  referencia:
+    capitulo: "8"
+    descricao: "Manutenção"
 
----
+- id: R_DOCUMENTACAO_INSTALACAO
+  descricao: "Documentação da instalação elétrica"
+  condicoes:
+    tipo_instalacao: "qualquer"
+  consequencias:
+    obrigar:
+      documentos:
+        - plantas
+        - diagramas_unifilares
+        - memorial_descritivo
+        - especificacao_materiais
+        - memorial_calculo
+      atualizacao:
+        modificacoes: "atualizar documentação"
+        as_built: recomendada
+  referencia:
+    capitulo: "8.2"
+    descricao: "Documentação da instalação"
 
-  - id: R_DESCARGAS_ATMOSFERICAS
-    descricao: "Risco de descargas atmosféricas exige proteção contra surtos"
-
-    condicoes:
-      influencias:
-        DescargasAtmosfericas: [AQ2, AQ3]
-
-    consequencias:
-      obrigar:
-        dispositivo:
-          tipo: DPS
-
-    referencia:
-      capitulo: "5.4.2"
-      descricao: "Proteção contra sobretensões transitórias"
+# ============================================================================
+# FIM DO ARQUIVO
+# ============================================================================

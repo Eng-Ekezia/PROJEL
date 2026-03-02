@@ -27,6 +27,10 @@ async def simular_dimensionamento(req: SimulacaoRequest):
     try:
         engine = DimensionadorProjeto()
         
+        print("\n--- [DEBUG] PAYLOAD RECEBIDO EM /SIMULAR ---")
+        print(req.circuito.model_dump())
+        print("--------------------------------------------\n")
+        
         # Como o engine é stateless, repassamos os dados de UI
         resultado = engine.processar_circuito(
             projeto=req.projeto,

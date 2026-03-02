@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/alert-dialog"
 
 import { useProjectStore } from "@/store/useProjectStore"
-import type { Circuito, Zona, Carga, Projeto } from "@/types/project"
+import type { Circuito, Zona, Carga } from "@/types/project"
 import { ResultadoDimensionamentoDialog } from "@/components/project/dialogs/ResultadoDimensionamentoDialog"
 
 const API_URL = "http://localhost:8000/api/v1";
@@ -31,14 +31,15 @@ interface ApiOptions {
   metodos_instalacao: { codigo: string, descricao: string }[]
 }
 
-// --- COMPONENTE DE TABELA (Dinâmico) ---
 function CircuitosTable({
   circuitos,
   zonas,
   todasCargas,
   options,
+  simulandoId,
   onUpdate,
-  onDelete
+  onDelete,
+  onSimular
 }: {
   circuitos: Circuito[],
   zonas: Zona[],
@@ -71,6 +72,8 @@ function CircuitosTable({
               <TableHead className="w-[120px]">Cargas / Pot.</TableHead>
               <TableHead className="w-[200px]">Método Inst.</TableHead>
               <TableHead className="w-[80px]">Tens.(V)</TableHead>
+              <TableHead className="w-[110px]">Material</TableHead>
+              <TableHead className="w-[110px]">Isolação</TableHead>
               <TableHead className="w-[90px]">Comp.(m)</TableHead>
               <TableHead className="w-[90px]">Temp.(°C)</TableHead>
               <TableHead className="w-[80px]">Agrup.</TableHead>
@@ -169,7 +172,8 @@ function CircuitosTable({
                   <TableCell>
                     <Input
                       type="number"
-                      defaultValue={circuito.tensao_nominal}
+                      placeholder="Ex: 220"
+                      defaultValue={circuito.tensao_nominal ?? ""}
                       className="h-8 px-2"
                       onBlur={(e) => {
                         const val = Number(e.target.value)
@@ -178,16 +182,49 @@ function CircuitosTable({
                     />
                   </TableCell>
 
+                  {/* MATERIAL */}
+                  <TableCell>
+                    <Select
+                      value={circuito.material_condutor || "COBRE"}
+                      onValueChange={(val) => onUpdate({ ...circuito, material_condutor: val as any })}
+                    >
+                      <SelectTrigger className="h-8 px-2 text-xs">
+                        <SelectValue placeholder="Material" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="COBRE">Cobre</SelectItem>
+                        <SelectItem value="ALUMINIO">Alumínio</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+
+                  {/* ISOLAÇÃO */}
+                  <TableCell>
+                    <Select
+                      value={circuito.isolacao || "PVC"}
+                      onValueChange={(val) => onUpdate({ ...circuito, isolacao: val as any })}
+                    >
+                      <SelectTrigger className="h-8 px-2 text-xs">
+                        <SelectValue placeholder="Isolação" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="PVC">PVC (70°C)</SelectItem>
+                        <SelectItem value="EPR">EPR (90°C)</SelectItem>
+                        <SelectItem value="XLPE">XLPE (90°C)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+
                   {/* COMPRIMENTO */}
                   <TableCell>
                     <Input
                       type="number"
-                      placeholder="0"
-                      defaultValue={circuito.comprimento_m || 0}
+                      placeholder="Ex: 15"
+                      defaultValue={circuito.comprimento_m ?? ""}
                       className="h-8 px-2"
                       onBlur={(e) => {
                         const val = Number(e.target.value)
-                        if (val >= 0 && val !== circuito.comprimento_m) onUpdate({ ...circuito, comprimento_m: val })
+                        if (val > 0 && val !== circuito.comprimento_m) onUpdate({ ...circuito, comprimento_m: val })
                       }}
                     />
                   </TableCell>
@@ -196,8 +233,8 @@ function CircuitosTable({
                   <TableCell>
                     <Input
                       type="number"
-                      placeholder="30"
-                      defaultValue={circuito.temperatura_ambiente || 30}
+                      placeholder="Ex: 30"
+                      defaultValue={circuito.temperatura_ambiente ?? ""}
                       className="h-8 px-2"
                       onBlur={(e) => {
                         const val = Number(e.target.value)
@@ -211,7 +248,8 @@ function CircuitosTable({
                     <Input
                       type="number"
                       min={1}
-                      defaultValue={circuito.circuitos_agrupados}
+                      placeholder="Ex: 1"
+                      defaultValue={circuito.circuitos_agrupados ?? ""}
                       className="h-8 px-2"
                       onBlur={(e) => {
                         const val = Number(e.target.value)
@@ -332,11 +370,21 @@ export default function CircuitosPage() {
       const locaisPayload = project.locais.filter(l => locaisEnvolvidosIds.has(l.id))
       const zonaGovernante = project.zonas.find(z => z.id === circuito.zona_id) || project.zonas[0]
 
+      // Determina potência baseando-se estritamente nas cargas vinculadas sem assumir fatores arbitrários
+      const cargasFiltradas = project.cargas.filter(c => circuito.cargas_ids?.includes(c.id));
+      const potenciaTotalW = cargasFiltradas.reduce((acc, c) => acc + (c.unidade === 'VA' ? c.potencia * c.fator_potencia : c.potencia), 0);
+
       const payload = {
         projeto: project,
         locais: locaisPayload,
         zona_governante: zonaGovernante,
-        circuito: circuito,
+        circuito: {
+          ...circuito,
+          potencia_instalada_W: potenciaTotalW,
+          corrente_nominal_A: null,
+          material_condutor: circuito.material_condutor || "COBRE",
+          isolacao: circuito.isolacao || "PVC"
+        },
         has_dr: false // Mock por enquanto
       }
 
@@ -348,6 +396,14 @@ export default function CircuitosPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
+        console.error("Payload enviado:", payload);
+        console.error("422 Validation Error Data:", errorData);
+
+        if (errorData.detail && Array.isArray(errorData.detail)) {
+          // Mapeia erros de validação do Pydantic
+          const validationMsg = errorData.detail.map((e: any) => `${e.loc.join('.')}: ${e.msg}`).join(" | ");
+          throw new Error(`Validação da API: ${validationMsg}`)
+        }
         throw new Error(errorData.detail || "Erro desconhecido na API")
       }
 

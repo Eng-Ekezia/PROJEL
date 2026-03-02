@@ -134,9 +134,12 @@ class DimensionadorProjeto:
 
         # 6. Seleção Proteção Sobrecorrente (Disjuntores)
         disjuntor_in = SelecaoDisjuntor.selecionar_in_disjuntor(corrente_projeto, capacidade_teorica * fc_temperatura * fc_agrup)
+        curva_disjuntor = SelecaoDisjuntor.selecionar_curva(circuito.tipo_circuito.value)
+        
         builder.resultado.disjuntor_nominal_in = disjuntor_in
+        builder.resultado.curva_disjuntor = curva_disjuntor
         if disjuntor_in:
-            builder.adicionar_passo(f"Dispositivo de Proteção Selecionado: IN = {disjuntor_in}A")
+            builder.adicionar_passo(f"Dispositivo de Proteção Selecionado: Curva {curva_disjuntor} / IN = {disjuntor_in}A")
             val_prot = ValidacoesNormativas.validar_protecao_sobrecorrente(
                 disjuntor_in, corrente_projeto, capacidade_teorica * fc_temperatura * fc_agrup
             )

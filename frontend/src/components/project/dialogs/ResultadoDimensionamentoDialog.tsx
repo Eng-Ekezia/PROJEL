@@ -1,5 +1,5 @@
-import { 
-    Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose
+import {
+    Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -21,6 +21,7 @@ interface ResultadoDimensionamento {
     corrente_projeto_ib: number;
     corrente_corrigida_iz: number;
     disjuntor_nominal_in: number;
+    curva_disjuntor?: string;
     secao_condutor_mm2: number;
     queda_tensao_pct: number;
     verificacoes: VerificacaoNormativa[];
@@ -56,11 +57,11 @@ export function ResultadoDimensionamentoDialog({ open, onOpenChange, resultado, 
                     <div className="flex items-start justify-between">
                         <div>
                             <DialogTitle className="text-xl flex items-center gap-2">
-                                <Zap className="w-5 h-5 text-indigo-500" /> 
+                                <Zap className="w-5 h-5 text-indigo-500" />
                                 Análise Normativa: Circuito {circuitoNome}
                             </DialogTitle>
                             <DialogDescription className="mt-1 flex items-center gap-2">
-                                Status Geral: 
+                                Status Geral:
                                 <Badge variant="outline" className={`ml-1 gap-1 ${getStatusStyle(resultado.status_global)}`}>
                                     {getStatusIcon(resultado.status_global)}
                                     {resultado.status_global.replace(/_/g, " ").toUpperCase()}
@@ -72,7 +73,7 @@ export function ResultadoDimensionamentoDialog({ open, onOpenChange, resultado, 
 
                 {resultado.erros_entrada && resultado.erros_entrada.length > 0 && (
                     <div className="mx-6 mt-4 p-3 bg-red-50 text-red-800 border border-red-200 rounded-md text-sm">
-                        <strong className="flex items-center gap-2 mb-1"><AlertCircle className="w-4 h-4"/> Erros Críticos que Inviabilizaram o Cálculo:</strong>
+                        <strong className="flex items-center gap-2 mb-1"><AlertCircle className="w-4 h-4" /> Erros Críticos que Inviabilizaram o Cálculo:</strong>
                         <ul className="list-disc pl-5">
                             {resultado.erros_entrada.map((e, idx) => <li key={idx}>{e}</li>)}
                         </ul>
@@ -81,9 +82,9 @@ export function ResultadoDimensionamentoDialog({ open, onOpenChange, resultado, 
 
                 <Tabs defaultValue="resumo" className="flex-1 overflow-hidden flex flex-col p-6 pt-2">
                     <TabsList className="mb-4 shrink-0">
-                        <TabsTrigger value="resumo" className="gap-2"><LayoutList className="w-4 h-4"/> Resultados Rápidos</TabsTrigger>
-                        <TabsTrigger value="verificacoes" className="gap-2"><CheckSquare className="w-4 h-4"/> Check NBR 5410</TabsTrigger>
-                        <TabsTrigger value="memoria" className="gap-2"><Calculator className="w-4 h-4"/> Memória de Cálculo</TabsTrigger>
+                        <TabsTrigger value="resumo" className="gap-2"><LayoutList className="w-4 h-4" /> Resultados Rápidos</TabsTrigger>
+                        <TabsTrigger value="verificacoes" className="gap-2"><CheckSquare className="w-4 h-4" /> Check NBR 5410</TabsTrigger>
+                        <TabsTrigger value="memoria" className="gap-2"><Calculator className="w-4 h-4" /> Memória de Cálculo</TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="resumo" className="flex-1 overflow-auto m-0 space-y-4 pr-2">
@@ -94,15 +95,15 @@ export function ResultadoDimensionamentoDialog({ open, onOpenChange, resultado, 
                             </div>
                             <div className="border rounded-md p-4 flex flex-col items-center justify-center bg-card shadow-sm">
                                 <span className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Disjuntor (IN)</span>
-                                <span className="text-2xl font-bold font-mono">{resultado.disjuntor_nominal_in} A</span>
+                                <span className="text-2xl font-bold font-mono">{resultado.curva_disjuntor ? `${resultado.curva_disjuntor} ` : ''}{resultado.disjuntor_nominal_in} A</span>
                             </div>
                             <div className="border rounded-md p-4 flex flex-col items-center justify-center bg-card shadow-sm">
                                 <span className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Corrente Corrigida</span>
-                                <span className="text-2xl font-bold font-mono">{resultado.corrente_corrigida_iz.toFixed(2)} A</span>
+                                <span className="text-2xl font-bold font-mono">{resultado.corrente_corrigida_iz?.toFixed(2) ?? '-'} A</span>
                             </div>
                             <div className="border rounded-md p-4 flex flex-col items-center justify-center bg-card shadow-sm">
                                 <span className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Queda de Tensão</span>
-                                <span className="text-2xl font-bold font-mono">{resultado.queda_tensao_pct.toFixed(2)} %</span>
+                                <span className="text-2xl font-bold font-mono">{resultado.queda_tensao_pct?.toFixed(2) ?? '-'} %</span>
                             </div>
                         </div>
                     </TabsContent>

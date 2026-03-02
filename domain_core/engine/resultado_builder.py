@@ -20,5 +20,8 @@ class ResultadoBuilder:
         self.resultado.verificacoes.append(validacao)
 
     def compilar(self) -> ResultadoDimensionamento:
-        self.resultado.status_global = ValidacoesNormativas.compor_status_global(self.resultado.verificacoes)
+        if self.resultado.erros_entrada:
+            self.resultado.status_global = StatusDimensionamento.ERRO
+        else:
+            self.resultado.status_global = ValidacoesNormativas.compor_status_global(self.resultado.verificacoes)
         return self.resultado

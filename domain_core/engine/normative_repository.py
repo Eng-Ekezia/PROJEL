@@ -26,12 +26,13 @@ class NormativeRepository:
             self.nbr_data = yaml.safe_load(f)
             
         with open(regras_path, 'r', encoding='utf-8') as f:
-            docs = list(yaml.safe_load_all(f))
+            docs: List[Any] = list(yaml.safe_load_all(f))
             # O primeiro doc contem a chave 'regras_normativas', ou as regras tao soltas
             if docs and 'regras_normativas' in docs[0]:
                 self.regras_data = {'regras_normativas': docs[0]['regras_normativas']}
                 # Captura docs subsequentes e append na lista de regras
-                for doc in docs[1:]:
+                for i in range(1, len(docs)):
+                   doc = docs[i]
                    if doc and isinstance(doc, list):
                        self.regras_data['regras_normativas'].extend(doc)
                    elif doc and isinstance(doc, dict) and 'regras_normativas' not in doc:
@@ -64,8 +65,17 @@ class NormativeRepository:
         Retorna a tabela de ampacidade para as condições dadas.
         Retorno: dict onde a chave é a seção (mm2) e o valor é a corrente máxima (A).
         """
+        # Tradução dos Enums do Frontend/Domínio para as chaves exatas do YAML da Norma
+        mat_map = {"COBRE": "cobre", "ALUMINIO": "aluminio"}
+        mat_key = mat_map.get(material.upper(), material.lower())
+        
+        iso_map = {"PVC": "PVC_70C", "EPR": "EPR_90C", "XLPE": "XLPE_90C"}
+        iso_key = iso_map.get(isolacao.upper(), isolacao)
+        
         try:
-            tabela = self.nbr_data['ampacidade'][material][isolacao][metodo][str(numero_condutores)]
+            print(f"[DEBUG NBR] Buscando ampacidade: Mat={mat_key}, Iso={iso_key}, Met={metodo}, Cond={numero_condutores}")
+            tabela = self.nbr_data['ampacidade'][mat_key][iso_key][metodo][str(numero_condutores)]
             return {float(k): float(v) for k, v in tabela.items() if v is not None}
-        except KeyError:
+        except KeyError as e:
+            print(f"[ERROR NBR] KeyError ao buscar tabela de ampacidade! Chave não encontrada: {e}")
             return {}

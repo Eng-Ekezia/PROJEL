@@ -28,6 +28,7 @@ class ResultadoDimensionamento(BaseModel):
     corrente_projeto_ib: float = Field(..., description="Corrente de projeto (A)")
     corrente_corrigida_iz: Optional[float] = Field(None, description="Corrente corrigida (A)")
     disjuntor_nominal_in: Optional[float] = Field(None, description="Disjuntor selecionado (A)")
+    curva_disjuntor: Optional[str] = Field(None, description="Curva de disparo do disjuntor (B, C, D)")
     secao_condutor_mm2: Optional[float] = Field(None, description="Seção do condutor (mm²)")
     queda_tensao_pct: Optional[float] = Field(None, description="Queda de tensão calculada (%)")
     
