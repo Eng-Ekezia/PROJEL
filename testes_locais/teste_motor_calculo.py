@@ -7,11 +7,12 @@ project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
 
 from domain_core.schemas.projeto import ProjetoEletrico
-from domain_core.schemas.zona import Zona
+from domain_core.schemas.zona import Zona, CategoriaA, CategoriaB, CategoriaC
 from domain_core.schemas.local import Local
 from domain_core.schemas.circuito import Circuito
 from domain_core.enums.circuitos import TipoCircuito
 from domain_core.enums.aterramento import EsquemaAterramento
+from domain_core.enums.influencias import TemperaturaAmbiente, PresencaAgua, PresencaSolidos, CompetenciaPessoas, MateriaisConstrucao, EstruturaEdificacao
 from domain_core.engine.dimensionador_projeto import DimensionadorProjeto
 
 def criar_ambiente_teste():
@@ -30,6 +31,19 @@ def criar_ambiente_teste():
         id="zona-test",
         projeto_id="proj-test",
         nome="Área Interna Seca",
+        origem="custom",
+        influencias_categoria_a=CategoriaA(
+            temp_ambiente=TemperaturaAmbiente.AA4,
+            presenca_agua=PresencaAgua.AD1,
+            presenca_solidos=PresencaSolidos.AE1
+        ),
+        influencias_categoria_b=CategoriaB(
+            competencia_pessoas=CompetenciaPessoas.BA1
+        ),
+        influencias_categoria_c=CategoriaC(
+            materiais_construcao=MateriaisConstrucao.CA1,
+            estrutura_edificacao=EstruturaEdificacao.CB1
+        ),
         data_criacao=datetime.now()
     )
 
@@ -55,6 +69,8 @@ def simular_circuito(potencia_W, tensao_V, comp_m, material, isolacao, agrup, ti
         identificador="Teste-01",
         tipo_circuito=tipo,
         zona_id=zona.id,
+        proposta_id="prop-test",
+        zona_governante_id=zona.id,
         tensao_nominal=tensao_V,
         comprimento_m=comp_m,
         metodo_instalacao=metodo,

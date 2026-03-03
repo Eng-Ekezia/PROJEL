@@ -1,7 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import Optional, Literal
 from datetime import datetime
-import uuid
 
 # Importando os Enums
 from ..enums.influencias import (
@@ -13,21 +12,31 @@ from ..enums.influencias import (
     EstruturaEdificacao
 )
 
+class CategoriaA(BaseModel):
+    temp_ambiente: TemperaturaAmbiente = Field(..., description="Temperatura Ambiente (Ex: AA4)")
+    presenca_agua: PresencaAgua = Field(..., description="Presença de Água (Ex: AD1)")
+    presenca_solidos: PresencaSolidos = Field(..., description="Presença de Sólidos (Ex: AE1)")
+
+class CategoriaB(BaseModel):
+    competencia_pessoas: CompetenciaPessoas = Field(..., description="Competência das Pessoas (Ex: BA1)")
+
+class CategoriaC(BaseModel):
+    materiais_construcao: MateriaisConstrucao = Field(..., description="Materiais de Construção (Ex: CA1)")
+    estrutura_edificacao: EstruturaEdificacao = Field(..., description="Estrutura da Edificação (Ex: CB1)")
+
 class ZonaBase(BaseModel):
     nome: str = Field(..., description="Nome descritivo da zona (ex: Área Molhada, Oficina)")
     descricao: Optional[str] = None
     
     # Metadados de UX/Rastreabilidade
-    origem: Literal['preset', 'ajustada', 'custom'] = Field(default='custom', description="Origem da definição da zona")
+    origem: Literal['preset', 'ajustada', 'custom'] = Field(..., description="Origem da definição da zona")
+    autor: Optional[str] = Field(default=None, description="Autor/Responsável pela definição")
     preset_id: Optional[str] = Field(default=None, description="ID do preset utilizado, se houver")
 
-    # --- Influências Ambientais (Defaults Seguros - NBR 5410) ---
-    temp_ambiente: TemperaturaAmbiente = Field(default=TemperaturaAmbiente.AA4)
-    presenca_agua: PresencaAgua = Field(default=PresencaAgua.AD1)
-    presenca_solidos: PresencaSolidos = Field(default=PresencaSolidos.AE1)
-    competencia_pessoas: CompetenciaPessoas = Field(default=CompetenciaPessoas.BA1)
-    materiais_construcao: MateriaisConstrucao = Field(default=MateriaisConstrucao.CA2)
-    estrutura_edificacao: EstruturaEdificacao = Field(default=EstruturaEdificacao.CB1)
+    # --- Influências Ambientais (Sem Defaults Cegos) ---
+    influencias_categoria_a: CategoriaA
+    influencias_categoria_b: CategoriaB
+    influencias_categoria_c: CategoriaC
     
     # --- UI Helper ---
     cor_identificacao: str = Field(default="#E0E0E0")
@@ -37,9 +46,10 @@ class ZonaCreate(ZonaBase):
 
 class ZonaUpdate(BaseModel):
     nome: Optional[str] = None
-    presenca_agua: Optional[PresencaAgua] = None
-    competencia_pessoas: Optional[CompetenciaPessoas] = None
-    origem: Optional[str] = None
+    influencias_categoria_a: Optional[CategoriaA] = None
+    influencias_categoria_b: Optional[CategoriaB] = None
+    influencias_categoria_c: Optional[CategoriaC] = None
+    origem: Optional[Literal['preset', 'ajustada', 'custom']] = None
 
 class Zona(ZonaBase):
     id: str

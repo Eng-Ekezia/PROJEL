@@ -9,3 +9,9 @@ class ProjetoEletrico(BaseModel):
     sistema: str
     esquema_aterramento: EsquemaAterramento
     descricao_aterramento: str | None = None
+    
+    # [FASE 2] Metadados e Rastreabilidade
+    descricao_geral: str | None = None
+    criterios_gerais: str | None = None
+    autor: str | None = None
+    data_criacao: str | None = None

@@ -1,6 +1,8 @@
 import sys
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 
 # --- HACK PARA MONOREPO ---
@@ -14,6 +16,24 @@ app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json"
 )
+
+# [FASE 2] Tratamento de Erro UX-Friendly (Contratos de Domínio)
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    detalhes = []
+    for error in exc.errors():
+        campo = ".".join([str(loc) for loc in error["loc"]])
+        msg = error["msg"]
+        detalhes.append(f"{campo}: {msg}")
+        
+    return JSONResponse(
+        status_code=422,
+        content={
+            "erro": "DECISAO_INVALIDA",
+            "mensagem": "Falha na validação do contrato de domínio. Verifique os campos informados.",
+            "detalhes": detalhes
+        }
+    )
 
 # Configuração de CORS (Crucial para o Frontend chamar o Backend)
 if settings.BACKEND_CORS_ORIGINS:

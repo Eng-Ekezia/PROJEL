@@ -20,6 +20,12 @@ class CargaBase(BaseModel):
     projeto_id: Optional[str] = Field(default=None, description="ID do Projeto pai")
     zona_id: Optional[str] = Field(default=None, description="ID da Zona herdada")
 
+    # [FASE 2] Metadados de Auditoria e Rastreabilidade Normativa
+    id: str = Field(..., description="ID da carga agora é obrigatório já na entrada")
+    origem: Literal['normativa', 'usuario'] = Field(default='usuario', description="Origem da necessidade da carga")
+    ajustada: bool = Field(default=False, description="Se o valor original foi ajustado")
+    justificativa_ajuste: Optional[str] = Field(default=None, description="Justificativa do ajuste (obrigatório se ajustada)")
+
 class CargaCreate(BaseModel):
     """Modelo de entrada (Input Inteligente)"""
     nome: str

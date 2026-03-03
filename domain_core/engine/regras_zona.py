@@ -55,30 +55,38 @@ class RegrasZonaEngine:
                 
         return False
         
-    def _encontrar_valor_influencia(self, chave_yaml: str, influencias: Dict[str, str]) -> Optional[str]:
-        """Traduz ChaveCamelCase para chave_snake_case ou checa valores diretos"""
+    def _encontrar_valor_influencia(self, chave_yaml: str, influencias: Dict[str, Any]) -> Optional[str]:
+        """Traduz ChaveCamelCase para chave_snake_case ou checa valores diretos nos sub-dicionários"""
         import re
         snake_case_key = re.sub(r'(?<!^)(=[A-Z])', r'_\1', chave_yaml).lower()
         
-        # Tenta a chave exata camelCase
-        if chave_yaml in influencias:
-            return influencias[chave_yaml]
+        # Como o influencias agora é um dict com categorias A, B e C:
+        # influencias = {
+        #    'influencias_categoria_a': {'temp_ambiente': 'AA4', ...},
+        #    'influencias_categoria_b': {'competencia_pessoas': 'BA1', ...},
+        #    ...
+        # }
         
-        # Tenta snake_case
-        if snake_case_key in influencias:
-            return influencias[snake_case_key]
-            
-        # Fallback: As vezes o dict vem algo como {'meio_ambiente': {'temperatura_ambiente': 'AA4'}}
-        # Simplificação: procurar o valor se a extrutura for chata
-        for k, v in influencias.items():
-            if isinstance(v, str) and isinstance(chave_yaml, str) and v.upper().startswith(chave_yaml[:2].upper()):
-                return v # Ex: Procura código começando com AA se for temperatura
+        for k_cat, cat_dict in influencias.items():
+            if isinstance(cat_dict, dict):
+                # Tenta a chave exata camelCase (improvável no nosso schema, mas mantendo para retrocompatibilidade do yaml)
+                if chave_yaml in cat_dict:
+                    return cat_dict[chave_yaml]
                 
-        # Se for flat e apenas os enums string (ex: 'AA4'):
-        for v in influencias.values():
-            if isinstance(v, str):
-                return v
-                
+                # Tenta snake_case
+                if snake_case_key in cat_dict:
+                    return cat_dict[snake_case_key]
+                    
+                # Simplificação: procurar o valor se a extrutura for chata
+                for k, v in cat_dict.items():
+                    if isinstance(v, str) and isinstance(chave_yaml, str) and v.upper().startswith(chave_yaml[:2].upper()):
+                        return v
+                        
+                # Se for flat e apenas os enums string (ex: 'AA4'):
+                for v in cat_dict.values():
+                    if isinstance(v, str):
+                        return v
+                        
         return None
 
     def _aplicar_consequencias(self, regra: Dict[str, Any], restricoes: RestricoesNormativas):
